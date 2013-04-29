@@ -3,9 +3,13 @@
 
 import sys, os, shutil, subprocess
 
-from waflib import extras
+from waflib import Utils, extras
 from waflib.Context import Context
 from waflib.Build import BuildContext
+
+from wtools import arm_gcc, arm_as
+
+sys.path += ['wtools']
 
 top = '.'
 out = 'wbuild'
@@ -13,30 +17,19 @@ out = 'wbuild'
 APPNAME='woggle'
 
 def options(opt):
-    opt.load('compiler_c asm')
+    # Set C cross compiler
+    from waflib.Tools.compiler_c import c_compiler
+    c_compiler['linux'] = ['arm_gcc']
+
+    # Load compiler and asm options
+    opt.load('compiler_c arm_as')
 
 def configure(conf):
-    conf.load('compiler_c asm')
+    # Load compiler and asm configuration
+    conf.load('compiler_c arm_as')
 
-    # Load cross compiler tools
-    if conf.find_program('arm-none-eabi-gcc'):
-        conf.env.CC = 'arm-none-eabi-gcc'
-        conf.env.LINK_CC = 'arm-none-eabi-gcc'
-    if conf.find_program('arm-none-eabi-ar'):
-        conf.env.AR = 'arm-none-eabi-ar'
-
-    conf.find_program('arm-none-eabi-objcopy', var='OBJ_CPY')
-    conf.find_program('arm-none-eabi-size', var='ARM_SIZE')
-
-    # Assembler specific conf
-    if conf.find_program('arm-none-eabi-gcc'):
-        conf.env.AS= 'arm-none-eabi-gcc'
-    conf.env.AS_TGT_F = ['-c', '-o']
-    conf.env.ASLNK_TGT_F = ['-o']
-
-    # Linker specific conf
-    conf.env['SHLIB_MARKER'] = ''
-    conf.env['STLIB_MARKER'] = ''
+    # Load objcopy
+    conf.find_program(['arm-none-eabi-objcopy', 'arm-linux-gnueabi-objcopy'], var='OBJ_CPY')
 
     # Flags
     genflags = ['-std=c99', '-Wall', '-Werror', '-fasm', '-fdata-sections', '-ffunction-sections']
@@ -50,11 +43,8 @@ def configure(conf):
     conf.env['LINKFLAGS'] = ['-T%s' % ldscript.abspath(),
                              '-Wl,-Map=%s.map' % APPNAME,
                              '-Wl,--gc-sections'] + archflags
-
     # Defines
     conf.env['DEFINES'] = ['GCC_ARMCM3', 'STM32F10X_MD']
-
-
 
 def build(bld):
     # STM32 DIR
@@ -101,11 +91,11 @@ def build(bld):
         )
 
     project_sources = []
-    project_sources.extend(stm32_startup_dir.ant_glob(['startup_stm32f10x_md.s']))
-    project_sources.extend(soft_dir.ant_glob(['*.c']))
-    project_sources.extend(freertos_dir.ant_glob(['port.c', 'queue.c', 'tasks.c', 'list.c']))
-    project_sources.extend(freertos_memdir.ant_glob(['heap_1.c']))
-    project_sources.extend(freertos_platdir.ant_glob(['port.c']))
+    project_sources += stm32_startup_dir.ant_glob(['startup_stm32f10x_md.s'])
+    project_sources += soft_dir.ant_glob(['*.c'])
+    project_sources += freertos_dir.ant_glob(['port.c', 'queue.c', 'tasks.c', 'list.c'])
+    project_sources += freertos_memdir.ant_glob(['heap_1.c'])
+    project_sources += freertos_platdir.ant_glob(['port.c'])
 
     # Build project
     bld(features   = 'asm c cprogram',
@@ -117,7 +107,6 @@ def build(bld):
                       freertos_incdir.abspath(),
                       lib_dir.abspath(),
                       ],
-        defines    = ['GCC_ARMCM3', 'STM32F10X_MD'],
         )
 
     # Create flash image
