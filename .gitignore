@@ -3,6 +3,9 @@ wbuild/*
 .lock-waf*
 .waf-*
 
+# Python
+*.pyc
+
 # Object files
 *.o
 
