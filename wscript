@@ -73,13 +73,15 @@ def build(bld):
         source     = stm32_stddriver_srcdir.ant_glob(['stm32f10x_flash.c',
                                                       'stm32f10x_gpio.c',
                                                       'stm32f10x_rcc.c',
+                                                      'stm32f10x_usart.c',
                                                       'misc.c',
                                                       ]),
         target     = 'stm32',
         cflags     = ['-include', 'assert_param.h'],
         includes   = [stm32_stddriver_incdir.abspath(),
                       stm32_core_dir.abspath(),
-                      libglobal_dir.abspath()],
+                      libglobal_dir.abspath(),
+                      ],
         )
 
     # Build libperiph
@@ -87,13 +89,28 @@ def build(bld):
         target     = 'periph',
         source     = libperiph_dir.ant_glob(['*.c']),
         includes   = [stm32_stddriver_incdir.abspath(),
-                      stm32_core_dir.abspath()],
+                      stm32_core_dir.abspath(),
+                      freertos_incdir.abspath(),
+                      lib_dir.abspath(),
+                      ],
+        defines    = ['USE_USART1'],
+        )
+
+    # Build libglobal
+    bld(features   = 'c cstlib',
+        target     = 'global',
+        source     = libglobal_dir.ant_glob(['*.c']),
+        includes   = [stm32_stddriver_incdir.abspath(),
+                      stm32_core_dir.abspath(),
+                      freertos_incdir.abspath(),
+                      lib_dir.abspath(),
+                      ],
         )
 
     project_sources = []
     project_sources += stm32_startup_dir.ant_glob(['startup_stm32f10x_md.s'])
     project_sources += soft_dir.ant_glob(['*.c'])
-    project_sources += freertos_dir.ant_glob(['port.c', 'queue.c', 'tasks.c', 'list.c'])
+    project_sources += freertos_dir.ant_glob(['queue.c', 'tasks.c', 'list.c'])
     project_sources += freertos_memdir.ant_glob(['heap_1.c'])
     project_sources += freertos_platdir.ant_glob(['port.c'])
 
@@ -101,7 +118,7 @@ def build(bld):
     bld(features   = 'asm c cprogram',
         source     = project_sources,
         target     = '%s.elf' % APPNAME,
-        use        = ['periph', 'stm32'],
+        use        = ['periph', 'global', 'stm32'],
         includes   = [stm32_stddriver_incdir.abspath(),
                       stm32_core_dir.abspath(),
                       freertos_incdir.abspath(),
