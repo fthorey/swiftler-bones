@@ -146,6 +146,10 @@ class Upload(BuildContext):
     cmd = 'upload'
     fun = 'upload'
 
+def flash(ctx):
+    from waflib import Options
+    Options.commands += ['distclean', 'configure', 'build', 'upload']
+
 def monitor(ctx):
 	import serial
         ser = serial.Serial(port     = '/dev/ttyUSB1',
