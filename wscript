@@ -3,7 +3,7 @@
 
 import sys, os, shutil, subprocess
 
-from waflib import Utils, extras
+from waflib import Utils, extras, Logs
 from waflib.Context import Context
 from waflib.Build import BuildContext
 
@@ -63,10 +63,9 @@ def build(bld):
     freertos_platdir = freertos_dir.find_dir('portable/GCC/ARM_CM3')
     freertos_memdir = freertos_dir.find_dir('portable/MemMang')
     # project dir
-    lib_dir = bld.path.find_dir('lib')
-    libglobal_dir = lib_dir.find_dir('libglobal')
-    libperiph_dir = lib_dir.find_dir('libperiph')
-    soft_dir = bld.path.find_dir('soft')
+    src_dir = bld.path.find_dir('src')
+    libglobal_dir = src_dir.find_dir('libglobal')
+    libperiph_dir = src_dir.find_dir('libperiph')
 
     # Build libstm32
     bld(features   = 'c cstlib',
@@ -91,7 +90,7 @@ def build(bld):
         includes   = [stm32_stddriver_incdir.abspath(),
                       stm32_core_dir.abspath(),
                       freertos_incdir.abspath(),
-                      lib_dir.abspath(),
+                      src_dir.abspath(),
                       ],
         defines    = ['USE_USART1'],
         )
@@ -103,13 +102,13 @@ def build(bld):
         includes   = [stm32_stddriver_incdir.abspath(),
                       stm32_core_dir.abspath(),
                       freertos_incdir.abspath(),
-                      lib_dir.abspath(),
+                      src_dir.abspath(),
                       ],
         )
 
     project_sources = []
     project_sources += stm32_startup_dir.ant_glob(['startup_stm32f10x_md.s'])
-    project_sources += soft_dir.ant_glob(['*.c'])
+    project_sources += src_dir.ant_glob(['main.c'])
     project_sources += freertos_dir.ant_glob(['queue.c', 'tasks.c', 'list.c'])
     project_sources += freertos_memdir.ant_glob(['heap_1.c'])
     project_sources += freertos_platdir.ant_glob(['port.c'])
@@ -122,7 +121,7 @@ def build(bld):
         includes   = [stm32_stddriver_incdir.abspath(),
                       stm32_core_dir.abspath(),
                       freertos_incdir.abspath(),
-                      lib_dir.abspath(),
+                      src_dir.abspath(),
                       ],
         )
 
@@ -146,3 +145,34 @@ def upload(upl):
 class Upload(BuildContext):
     cmd = 'upload'
     fun = 'upload'
+
+def monitor(ctx):
+	import serial
+        ser = serial.Serial(port     = '/dev/ttyUSB1',
+                            baudrate = 115200,
+                            parity   = serial.PARITY_ODD,
+                            stopbits = serial.STOPBITS_ONE,
+                            bytesize = serial.SEVENBITS,
+                            )
+
+        ser.open()
+	ser.flushInput()
+
+	Logs.pprint('GREEN', 'Woggle Monitor :')
+
+        if ser.isOpen():
+            print 'success'
+
+        try:
+            print ser.inWaiting()
+
+	except KeyboardInterrupt :
+		ser.close()
+		Logs.pprint('GREEN', '\n%s closed' % port)
+		return
+	except Exception, e:
+		ser.close()
+		Logs.pprint('RED', e)
+
+
+
