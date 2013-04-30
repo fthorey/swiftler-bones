@@ -9,7 +9,7 @@
 #include "libperiph/hardware.h"
 #include "libperiph/uart.h"
 
-#include "leds.h"
+#include "libperiph/leds.h"
 
 static void prvFlashLEDTask(void* pvParameters);
 
@@ -17,11 +17,10 @@ void process_motor_cmd(char* cmd);
 void process_control_cmd(char* cmd);
 void process_debug_cmd(char* cmd);
 
-
 int main(void)
 {
   hardware_init();
-  vLEDsInit();
+  led_init();
   uart_init();
 
   token_t tokens[3];
@@ -48,7 +47,10 @@ int main(void)
 static void prvFlashLEDTask(void* pvParameters)
 {
   for (;;) {
-    vLEDToggle(COLOR_LED_GREEN);
+    led_toggle(LED_GREEN);
+    led_toggle(LED_YELLOW);
+    vTaskDelay(500 / portTICK_RATE_MS);
+    led_toggle(LED_YELLOW);
     vTaskDelay(500 / portTICK_RATE_MS);
   }
 }
