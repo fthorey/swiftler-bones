@@ -110,6 +110,7 @@ static void prvInterpreterDaemon(void* pvParameters)
       {
         (*tokens[i].handler)(cmd + 1);
         abort = 0;
+        uart_puts("\r\n");
         break;
       }
     }
@@ -118,7 +119,7 @@ static void prvInterpreterDaemon(void* pvParameters)
     {
       uart_puts("error: undefined command '");
       uart_putc(cmd[0]);
-      uart_puts("'\r\n");
+      uart_puts("\r\n");
     }
   }
 }
