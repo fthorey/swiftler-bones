@@ -1,13 +1,14 @@
 #! /usr/bin/env python
 # encoding: utf-8
 
-import sys, os, shutil, subprocess
+import os, sys, shutil, subprocess, termios, serial
 
 from waflib import Utils, extras, Logs
 from waflib.Context import Context
 from waflib.Build import BuildContext
 
 from wtools import arm_gcc, arm_as
+from wtools import interpreter
 
 sys.path += ['wtools']
 
@@ -151,32 +152,19 @@ def flash(ctx):
     Options.commands += ['distclean', 'configure', 'build', 'upload']
 
 def monitor(ctx):
-	import serial
-        ser = serial.Serial(port     = '/dev/ttyUSB1',
-                            baudrate = 115200,
-                            parity   = serial.PARITY_ODD,
-                            stopbits = serial.STOPBITS_ONE,
-                            bytesize = serial.SEVENBITS,
-                            )
+    term = interpreter.Term(serial.Serial('/dev/ttyUSB2', 115200))
+    term.run()
+    pass
 
-        ser.open()
-	ser.flushInput()
 
-	Logs.pprint('GREEN', 'Woggle Monitor :')
 
-        if ser.isOpen():
-            print 'success'
 
-        try:
-            print ser.inWaiting()
 
-	except KeyboardInterrupt :
-		ser.close()
-		Logs.pprint('GREEN', '\n%s closed' % port)
-		return
-	except Exception, e:
-		ser.close()
-		Logs.pprint('RED', e)
+
+
+
+
+
 
 
 
