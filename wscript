@@ -149,12 +149,38 @@ class Upload(BuildContext):
 
 def flash(ctx):
     from waflib import Options
-    Options.commands += ['distclean', 'configure', 'build', 'upload']
+    Options.commands += ['distclean', 'configure', 'build', 'upload', 'monitor']
 
 def monitor(ctx):
-    term = interpreter.Term(serial.Serial('/dev/ttyUSB2', 115200))
-    term.run()
-    pass
+	import serial, select
+        term = None
+        for i in xrange(0, 8) :
+            try :
+                port = '/dev/ttyUSB' + str(i)
+                term = interpreter.Term(serial.Serial(port, 115200, timeout=1), APPNAME)
+                term.ser.write('\r')
+                term.checkPrompt()
+                Logs.pprint('YELLOW', "Opened %s" % port)
+                break
+            except serial.SerialException as e:
+                term = None
+                continue
+            except interpreter.TimeoutException as e:
+                term = None
+                continue
+
+        if not term :
+            ctx.fatal("Couldn't open a serial port")
+
+        term.ser.flushInput()
+
+        Logs.pprint('GREEN', '%s Monitor :' % APPNAME)
+
+        term.ser.write('\r')
+
+        term.run()
+
+
 
 
 

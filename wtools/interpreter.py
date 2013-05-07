@@ -31,9 +31,12 @@ class Console:
             return -1
 
 class Term:
-    def __init__(self, ser):
+    def __init__(self, ser, termName):
         self.ser = ser
+        self.termName = termName
         self.threads = []
+
+        self.console = Console()
 
     def start(self):
         self.alive = True
@@ -44,14 +47,12 @@ class Term:
                 ))
 
         # console -> serial
-        self.console = Console()
         self.threads.append(threading.Thread(
                 target = self.writer,
                 ))
 
         # start all threads
         for thread in self.threads:
-            thread.daemon = True
             thread.start()
 
     def stop(self):
@@ -127,11 +128,6 @@ class Term:
             self.console.cleanup()
             os._exit(1)
 
-    def print_header(self):
-        print "Welcome to Woggle Terminal"
-        print "^C to exit"
-        print "----------"
-
     def run(self):
         # Set timeout
         self.ser.timeout = 0.1
@@ -139,12 +135,54 @@ class Term:
         # Handle SIGINT gracefully
         signal.signal(signal.SIGINT, lambda *args: self.stop())
 
-        # Header
-        self.print_header()
-
         # Go
         self.start()
         self.join()
 
         # Cleanup
         self.console.cleanup()
+
+    def checkPrompt(self):
+        def timeout_handler(signum, frame):
+            raise TimeoutException("TimeOut while checking prompt")
+
+        old_handler = signal.signal(signal.SIGALRM, timeout_handler)
+        signal.alarm(1)
+
+        term = []
+
+        try:
+            while True:
+                data = self.ser.read(1)
+                if not data:
+                    continue
+
+                if ((ord(data) >= 32 and ord(data) < 128) or
+                    data == '\r' or data == '\n' or data == '\t'):
+                    term += data
+
+                if self.termName in ''.join(term):
+                    return
+
+                sys.stdout.flush()
+
+        except TimeoutException as e:
+            sys.stdout.flush()
+            self.console.cleanup()
+            raise
+
+        finally:
+            signal.signal(signal.SIGALRM, old_handler)
+            signal.alarm(0)
+
+        signal.alarm(0)
+
+class TimeoutException(Exception):
+    def __init__(self,what):
+        self.what = what
+
+    def __str__(self):
+        return self.what
+
+
+
