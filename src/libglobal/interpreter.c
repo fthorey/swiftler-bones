@@ -74,7 +74,7 @@ static void prvInterpreterDaemon(void* pvParameters)
         uart_puts(": abort\r\n");
         break;
       }
-      else if (c == 0x08)
+      else if (c == 0x08 || c == 0x7f)
       {
         if (size > 0)
         {
