@@ -157,9 +157,10 @@ def monitor(ctx):
         for i in xrange(0, 8) :
             try :
                 port = '/dev/ttyUSB' + str(i)
-                term = interpreter.Term(serial.Serial(port, 115200, timeout=1), APPNAME)
-                term.ser.write('\r')
-                term.checkPrompt()
+                with interpreter.console():
+                    term = interpreter.Term(serial.Serial(port, 115200, timeout=1), APPNAME)
+                    term.ser.write('\r')
+                    interpreter.checkPrompt(term, 'woggle')
                 Logs.pprint('YELLOW', "Opened %s" % port)
                 break
             except serial.SerialException as e:
@@ -172,25 +173,11 @@ def monitor(ctx):
         if not term :
             ctx.fatal("Couldn't open a serial port")
 
-        term.ser.flushInput()
-
         Logs.pprint('GREEN', '%s Monitor :' % APPNAME)
-
-        term.ser.write('\r')
-
-        term.run()
-
-
-
-
-
-
-
-
-
-
-
-
+        with interpreter.console():
+            term.ser.flushInput()
+            term.ser.write('\r')
+            term.run()
 
 
 
