@@ -41,8 +41,9 @@ def checkPrompt(*args):
             data == '\r' or data == '\n' or data == '\t'):
             prompt += data
 
-        if args[1] in ''.join(prompt):
-            return
+        for elem in args[1]:
+            if elem in ''.join(prompt):
+                return
 
         sys.stdout.flush()
 

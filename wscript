@@ -160,7 +160,7 @@ def monitor(ctx):
                 with interpreter.console():
                     term = interpreter.Term(serial.Serial(port, 115200, timeout=1), APPNAME)
                     term.ser.write('\r')
-                    interpreter.checkPrompt(term, 'woggle')
+                    interpreter.checkPrompt(term, ['woggle', 'HiZ'])
                 Logs.pprint('YELLOW', "Opened %s" % port)
                 break
             except serial.SerialException as e:
