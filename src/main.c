@@ -42,9 +42,6 @@ static void prvFlashLEDTask(void* pvParameters)
 {
   for (;;) {
     led_toggle(LED_GREEN);
-    led_toggle(LED_YELLOW);
-    vTaskDelay(500 / portTICK_RATE_MS);
-    led_toggle(LED_YELLOW);
     vTaskDelay(500 / portTICK_RATE_MS);
   }
 }

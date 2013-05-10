@@ -5,10 +5,9 @@
 #include "hardware.h"
 #include "leds.h"
 
-# define LEDS_CNT 2
+# define LEDS_CNT 1
 
-static led_t leds[LEDS_CNT] = {{.GPIOx = GPIOA, .GPIO_Pin_x = GPIO_Pin_1},  // LED_YELLOW
-                               {.GPIOx = GPIOA, .GPIO_Pin_x = GPIO_Pin_5}}; // LED_GREEN
+static led_t leds[LEDS_CNT] = {{.GPIOx = GPIOA, .GPIO_Pin_x = GPIO_Pin_5}}; // LED_GREEN
 
 void led_init()
 {
