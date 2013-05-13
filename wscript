@@ -74,6 +74,7 @@ def build(bld):
                                                       'stm32f10x_gpio.c',
                                                       'stm32f10x_rcc.c',
                                                       'stm32f10x_usart.c',
+                                                      'stm32f10x_tim.c',
                                                       'misc.c',
                                                       ]),
         target     = 'stm32',
@@ -110,7 +111,7 @@ def build(bld):
     project_sources = []
     project_sources += stm32_startup_dir.ant_glob(['startup_stm32f10x_md.s'])
     project_sources += src_dir.ant_glob(['main.c'])
-    project_sources += freertos_dir.ant_glob(['queue.c', 'tasks.c', 'list.c'])
+    project_sources += freertos_dir.ant_glob(['queue.c', 'tasks.c', 'list.c', 'semphr.c'])
     project_sources += freertos_memdir.ant_glob(['heap_1.c'])
     project_sources += freertos_platdir.ant_glob(['port.c'])
 

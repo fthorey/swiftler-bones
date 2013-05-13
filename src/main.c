@@ -8,12 +8,14 @@
 
 #include "libperiph/hardware.h"
 #include "libperiph/uart.h"
-
 #include "libperiph/leds.h"
+#include "libperiph/motors.h"
+
+static bool bMotorsEnable   = ENABLE;
 
 static void prvFlashLEDTask(void* pvParameters);
 
-void cmd_received(char* cmd);
+void process_motor_cmd(char* str);
 
 int main(void)
 {
@@ -21,9 +23,11 @@ int main(void)
   led_init();
   uart_init();
 
+  vMotorsInit(tskIDLE_PRIORITY + 3);
+
   token_t token;
-  token.command = 'c';
-  token.handler = &cmd_received;
+  token.command = 'm';
+  token.handler = &process_motor_cmd;
   vInterpreterInit("woggle", &token, 1, tskIDLE_PRIORITY + 4);
 
   xTaskCreate(prvFlashLEDTask,
@@ -32,6 +36,9 @@ int main(void)
               tskIDLE_PRIORITY + 1, NULL);
 
   vInterpreterStart();
+
+  if (bMotorsEnable)
+    vMotorsEnable();
 
   vTaskStartScheduler();
 
@@ -46,7 +53,71 @@ static void prvFlashLEDTask(void* pvParameters)
   }
 }
 
-void cmd_received(char* str)
+void process_motor_cmd(char* str)
 {
-  uart_puts("cmd_received");
+  int value;
+  char buffer[32];
+  char cmd = str[0];
+  char* args = trim_in_place(str + 1);
+
+  if (cmd == 's') // start/stop
+  {
+    if (bMotorsEnable)
+    {
+      vMotorsDisable();
+      uart_puts("stop motors");
+      uart_puts("\r\n");
+      bMotorsEnable = DISABLE;
+    }
+    else
+    {
+      vMotorsEnable();
+      uart_puts("start motors");
+      uart_puts("\r\n");
+      bMotorsEnable = ENABLE;
+    }
+  }
+  else if (cmd == 'l')
+  {
+    value = atoi(args);
+    vSetMotorLeftCommand(value);
+    uart_puts("setting LEFT motor speed: ");
+    itoa(value, buffer);
+    uart_puts(buffer);
+    uart_puts("%\r\n");
+  }
+  else if (cmd == 'r')
+  {
+    value = atoi(args);
+    vSetMotorRightCommand(value);
+    uart_puts("setting RIGHT motor speed: ");
+    itoa(value, buffer);
+    uart_puts(buffer);
+    uart_puts("%\r\n");
+  }
+  else if (cmd == 'b')
+  {
+    int sep = 1;
+    while (args[sep++] != ':');
+    value = atoi_eol(args, ':');
+    vSetMotorLeftCommand(value);
+    uart_puts("setting LEFT motor speed: ");
+    itoa(value, buffer);
+    uart_puts(buffer);
+    uart_puts("%\r\n");
+
+    value = atoi(args + sep);
+    vSetMotorRightCommand(value);
+    uart_puts("setting RIGHT motor speed: ");
+    itoa(value, buffer);
+    uart_puts(buffer);
+    uart_puts("%\r\n");
+  }
+  else
+  {
+    uart_puts("error: undefined subcommand '");
+    uart_putc(cmd);
+    uart_puts("' for motor command\r\n");
+  }
 }
+
