@@ -94,7 +94,6 @@ def build(bld):
                       freertos_incdir.abspath(),
                       src_dir.abspath(),
                       ],
-        defines    = ['USE_USART1'],
         )
 
     # Build libglobal
