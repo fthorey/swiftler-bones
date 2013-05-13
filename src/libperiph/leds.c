@@ -1,15 +1,24 @@
+#include "leds.h"
+
 #include "stm32f10x_gpio.h"
 #include "stm32f10x_rcc.h"
 #include "stm32f10x_tim.h"
-
-#include "hardware.h"
-#include "leds.h"
+#include "task.h"
+#include "libperiph/hardware.h"
 
 # define LEDS_CNT 1
 
+typedef struct
+{
+  GPIO_TypeDef* GPIOx;
+  uint16_t GPIO_Pin_x;
+} led_t;
+
+static void prvFlashLEDTask(void* pvParameters_);
+
 static led_t leds[LEDS_CNT] = {{.GPIOx = GPIOA, .GPIO_Pin_x = GPIO_Pin_5}}; // LED_GREEN
 
-void led_init()
+void vLedsInit(unsigned portBASE_TYPE ledDaemonPriority_)
 {
   for (int i = 0; i < LEDS_CNT; i++) {
     gpio_clock_init(leds[i].GPIOx);
@@ -24,22 +33,36 @@ void led_init()
     GPIO_Init(leds[i].GPIOx, &init);
     GPIO_ResetBits(leds[i].GPIOx, leds[i].GPIO_Pin_x);
   }
+
+  xTaskCreate(prvFlashLEDTask,
+              (signed portCHAR*)"Flash LED",
+              configMINIMAL_STACK_SIZE, NULL,
+              ledDaemonPriority_, NULL);
+
 }
 
-void led_off(enum eLED led)
+static void prvFlashLEDTask(void* pvParameters_)
 {
-  GPIO_ResetBits(leds[led].GPIOx, leds[led].GPIO_Pin_x);
+  for (;;) {
+    vLedToggle(LED_GREEN);
+    vTaskDelay(500 / portTICK_RATE_MS);
+  }
 }
 
-void led_on(enum eLED led)
+void vLedOff(enum eLED led_)
 {
-  GPIO_SetBits(leds[led].GPIOx, leds[led].GPIO_Pin_x);
+  GPIO_ResetBits(leds[led_].GPIOx, leds[led_].GPIO_Pin_x);
 }
 
-void led_toggle(enum eLED led)
+void vLedOn(enum eLED led_)
 {
-  if (GPIO_ReadOutputDataBit(leds[led].GPIOx, leds[led].GPIO_Pin_x))
-    led_off(led);
+  GPIO_SetBits(leds[led_].GPIOx, leds[led_].GPIO_Pin_x);
+}
+
+void vLedToggle(enum eLED led_)
+{
+  if (GPIO_ReadOutputDataBit(leds[led_].GPIOx, leds[led_].GPIO_Pin_x))
+    vLedOff(led_);
   else
-    led_on(led);
+    vLedOn(led_);
 }

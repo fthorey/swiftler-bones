@@ -13,27 +13,27 @@
 
 static bool bMotorsEnable   = ENABLE;
 
-static void prvFlashLEDTask(void* pvParameters);
-
 void process_motor_cmd(char* str);
 
 int main(void)
 {
+  // HARDWARE
   hardware_init();
-  led_init();
+
+  // UART
   uart_init();
 
+  // LEDS
+  vLedsInit(tskIDLE_PRIORITY + 1);
+
+  // MOTORS
   vMotorsInit(tskIDLE_PRIORITY + 3);
 
+  // SERIAL CONSOLE
   token_t token;
   token.command = 'm';
   token.handler = &process_motor_cmd;
   vInterpreterInit("woggle", &token, 1, tskIDLE_PRIORITY + 4);
-
-  xTaskCreate(prvFlashLEDTask,
-              (signed portCHAR*)"Flash LED",
-              configMINIMAL_STACK_SIZE, NULL,
-              tskIDLE_PRIORITY + 1, NULL);
 
   vInterpreterStart();
 
@@ -43,14 +43,6 @@ int main(void)
   vTaskStartScheduler();
 
   return 0;
-}
-
-static void prvFlashLEDTask(void* pvParameters)
-{
-  for (;;) {
-    led_toggle(LED_GREEN);
-    vTaskDelay(500 / portTICK_RATE_MS);
-  }
 }
 
 void process_motor_cmd(char* str)
