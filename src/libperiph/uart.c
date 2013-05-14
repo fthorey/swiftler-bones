@@ -1,3 +1,5 @@
+#include "libperiph/uart.h"
+
 #include "FreeRTOS.h"
 #include "queue.h"
 #include "semphr.h"
@@ -8,13 +10,11 @@
 #include "misc.h"
 #include "task.h"
 
-#include "libperiph/uart.h"
-
 static xQueueHandle xUartRxQueue;
 static xQueueHandle xUartTxQueue;
 static xSemaphoreHandle xUartTxMutex;
 
-void uart_init()
+void vUartInit()
 {
   xUartTxMutex = xSemaphoreCreateMutex();
   xUartRxQueue = xQueueCreate(16, sizeof(char));
@@ -60,54 +60,54 @@ void uart_init()
   USART1->CR1 |= USART_CR1_RXNEIE;
 }
 
-char uart_getc()
+char cUartGetc()
 {
   char c;
   xQueueReceive(xUartRxQueue, &c, portMAX_DELAY);
   return c;
 }
 
-void uart_gets(char* s, int size)
+void vUartGets(char* s_, int size_)
 {
   char c;
 
-  for (int i = 0; i < size; i++)
+  for (int i = 0; i < size_; i++)
   {
-    if (i == size - 1)
+    if (i == size_ - 1)
     {
-      s[i] = 0;
+      s_[i] = 0;
       break;
     }
 
-    c = uart_getc();
+    c = cUartGetc();
 
     if (c == '\r')
     {
-      s[i] = 0;
+      s_[i] = 0;
       break;
     }
 
-    s[i] = c;
+    s_[i] = c;
   }
 }
 
-void uart_putc(char c)
+void vUartPutc(char c_)
 {
-  xQueueSend(xUartTxQueue, &c, portMAX_DELAY);
+  xQueueSend(xUartTxQueue, &c_, portMAX_DELAY);
   USART1->CR1 |= USART_CR1_TXEIE;
 }
 
-void uart_puts(const char* s)
+void vUartPuts(const char* s_)
 {
-  while (*s)
-    uart_putc(*s++);
+  while (*s_)
+    vUartPutc(*s_++);
 }
 
-void uart_send(const char* s)
+void vUartSend(const char* s_)
 {
   xSemaphoreTake(xUartTxMutex, portMAX_DELAY);
-  uart_puts(s);
-  uart_putc('\r');
+  vUartPuts(s_);
+  vUartPutc('\r');
   xSemaphoreGive(xUartTxMutex);
 }
 

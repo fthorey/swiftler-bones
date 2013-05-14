@@ -1,4 +1,4 @@
-#include "motors.h"
+#include "libperiph/motors.h"
 
 #include "stm32f10x_gpio.h"
 #include "stm32f10x_rcc.h"
@@ -20,7 +20,6 @@
 #define MAX_DIFF        50
 
 #define COMMAND_TO_PWM(C) ((((C) * OFFSET) / LIMIT_VAL) + OFFSET)
-#define ABS(X)            (((X)<0)? -(X) : (X))
 
 typedef union{
   struct {
@@ -44,11 +43,11 @@ static void vMotorsReset();
 void vMotorsInit(unsigned portBASE_TYPE motorsDaemonPriority_)
 {
   // Enable GPIOA &  GPIOC clock
-  gpio_clock_init(GPIOA);
-  gpio_clock_init(GPIOC);
+  vGpioClockInit(GPIOA);
+  vGpioClockInit(GPIOC);
 
   // Enable TIM2 clock
-  timer_clock_init(TIM2);
+  vTimerClockInit(TIM2);
 
   // Motors PWM: MOTOR1=left, MOTOR2=right ; A and B have opposed polarity
   GPIO_InitTypeDef GPIO_InitStructure1 =

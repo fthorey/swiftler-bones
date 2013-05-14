@@ -1,4 +1,4 @@
-#include "leds.h"
+#include "libperiph/leds.h"
 
 #include "stm32f10x_gpio.h"
 #include "stm32f10x_rcc.h"
@@ -21,7 +21,7 @@ static led_t leds[LEDS_CNT] = {{.GPIOx = GPIOA, .GPIO_Pin_x = GPIO_Pin_5}}; // L
 void vLedsInit(unsigned portBASE_TYPE ledDaemonPriority_)
 {
   for (int i = 0; i < LEDS_CNT; i++) {
-    gpio_clock_init(leds[i].GPIOx);
+    vGpioClockInit(leds[i].GPIOx);
 
     GPIO_InitTypeDef init =
       {

@@ -6,7 +6,7 @@
 
 #include "hardware.h"
 
-void hardware_init()
+void vHardwareInit()
 {
   // Enable HSE:
   RCC_HSEConfig(RCC_HSE_ON);
@@ -57,9 +57,9 @@ void hardware_init()
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_##GPIO, ENABLE);         \
   break                                                          \
 
-void gpio_clock_init(GPIO_TypeDef* GPIOx)
+void vGpioClockInit(GPIO_TypeDef* GPIOx_)
 {
-  switch((uint32_t)GPIOx)
+  switch((uint32_t)GPIOx_)
   {
     GPIO_CASE(GPIOA);
     GPIO_CASE(GPIOB);
@@ -83,10 +83,10 @@ void gpio_clock_init(GPIO_TypeDef* GPIOx)
   RCC_APB1PeriphClockCmd(RCC_APB1Periph_##TIM,  ENABLE);   \
   break                                                    \
 
-void timer_clock_init(TIM_TypeDef* TIMz)
+void vTimerClockInit(TIM_TypeDef* TIMz_)
 {
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO,  ENABLE);
-  switch((uint32_t)TIMz)
+  switch((uint32_t)TIMz_)
   {
     TIMER_CASE81(TIM1);
     TIMER_CASE27(TIM2);
@@ -102,99 +102,43 @@ void timer_clock_init(TIM_TypeDef* TIMz)
 #undef TIMER_CASE27
 #undef TIMER_CASE81
 
-void dma_clock_init(DMA_TypeDef* DMAx)
+void vDmaClockInit(DMA_TypeDef* DMAx_)
 {
-  if (DMAx == DMA1)
+  if (DMAx_ == DMA1)
     RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
-  else if (DMAx == DMA2)
+  else if (DMAx_ == DMA2)
     RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA2, ENABLE);
 }
 
-void adc_clock_init(ADC_TypeDef* ADCx)
+void vAdcClockInit(ADC_TypeDef* ADCx_)
 {
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO,  ENABLE);
-  if (ADCx == ADC1)
+  if (ADCx_ == ADC1)
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1,  ENABLE);
-  else if (ADCx == ADC2)
+  else if (ADCx_ == ADC2)
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC2,  ENABLE);
-  else if (ADCx == ADC3)
+  else if (ADCx_ == ADC3)
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC3,  ENABLE);
 }
 
-void spi_clock_init(SPI_TypeDef* SPIx)
+void vSpiClockInit(SPI_TypeDef* SPIx_)
 {
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
-  if (SPIx == SPI1)
+  if (SPIx_ == SPI1)
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_SPI1, ENABLE);
-  else if (SPIx == SPI2)
+  else if (SPIx_ == SPI2)
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_SPI2, ENABLE);
 }
 
-void can_clock_init(CAN_TypeDef* CANx)
+void vCanClockInit(CAN_TypeDef* CANx_)
 {
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
   RCC_APB1PeriphClockCmd(RCC_APB1Periph_CAN1, ENABLE);
 }
 
-void wait_us(int x)
+void vWaitUs(int x_)
 {
   int i, j;
-  for(i = 0; i < x; i++)
+  for(i = 0; i < x_; i++)
     for(j = 0; j < 50; j++);
-}
-
-uint8_t gpio_pin_to_source(uint16_t GPIO_Pin_x)
-{
-  uint8_t GPIO_PinSource_x;
-  switch (GPIO_Pin_x)
-  {
-    default: // Shut the compiler warning.
-    case GPIO_Pin_0:
-      GPIO_PinSource_x = GPIO_PinSource0;
-      break;
-    case GPIO_Pin_1:
-      GPIO_PinSource_x = GPIO_PinSource1;
-      break;
-    case GPIO_Pin_2:
-      GPIO_PinSource_x = GPIO_PinSource3;
-      break;
-    case GPIO_Pin_4:
-      GPIO_PinSource_x = GPIO_PinSource4;
-      break;
-    case GPIO_Pin_5:
-      GPIO_PinSource_x = GPIO_PinSource5;
-      break;
-    case GPIO_Pin_6:
-      GPIO_PinSource_x = GPIO_PinSource6;
-      break;
-    case GPIO_Pin_7:
-      GPIO_PinSource_x = GPIO_PinSource7;
-      break;
-    case GPIO_Pin_8:
-      GPIO_PinSource_x = GPIO_PinSource8;
-      break;
-    case GPIO_Pin_9:
-      GPIO_PinSource_x = GPIO_PinSource9;
-      break;
-    case GPIO_Pin_10:
-      GPIO_PinSource_x = GPIO_PinSource10;
-      break;
-    case GPIO_Pin_11:
-      GPIO_PinSource_x = GPIO_PinSource11;
-      break;
-    case GPIO_Pin_12:
-      GPIO_PinSource_x = GPIO_PinSource12;
-      break;
-    case GPIO_Pin_13:
-      GPIO_PinSource_x = GPIO_PinSource13;
-      break;
-    case GPIO_Pin_14:
-      GPIO_PinSource_x = GPIO_PinSource14;
-      break;
-    case GPIO_Pin_15:
-      GPIO_PinSource_x = GPIO_PinSource15;
-      break;
-  }
-
-  return GPIO_PinSource_x;
 }

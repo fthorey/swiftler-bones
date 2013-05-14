@@ -18,18 +18,14 @@ void process_motor_cmd(char* str);
 int main(void)
 {
   // HARDWARE
-  hardware_init();
-
+  vHardwareInit();
   // UART
-  uart_init();
-
+  vUartInit();
   // LEDS
   vLedsInit(tskIDLE_PRIORITY + 1);
-
   // MOTORS
   vMotorsInit(tskIDLE_PRIORITY + 3);
-
-  // SERIAL CONSOLE
+  // INTERPRETER
   token_t token;
   token.command = 'm';
   token.handler = &process_motor_cmd;
@@ -57,15 +53,15 @@ void process_motor_cmd(char* str)
     if (bMotorsEnable)
     {
       vMotorsDisable();
-      uart_puts("stop motors");
-      uart_puts("\r\n");
+      vUartPuts("stop motors");
+      vUartPuts("\r\n");
       bMotorsEnable = DISABLE;
     }
     else
     {
       vMotorsEnable();
-      uart_puts("start motors");
-      uart_puts("\r\n");
+      vUartPuts("start motors");
+      vUartPuts("\r\n");
       bMotorsEnable = ENABLE;
     }
   }
@@ -73,19 +69,19 @@ void process_motor_cmd(char* str)
   {
     value = atoi(args);
     vSetMotorLeftCommand(value);
-    uart_puts("setting LEFT motor speed: ");
+    vUartPuts("setting LEFT motor speed: ");
     itoa(value, buffer);
-    uart_puts(buffer);
-    uart_puts("%\r\n");
+    vUartPuts(buffer);
+    vUartPuts("%\r\n");
   }
   else if (cmd == 'r')
   {
     value = atoi(args);
     vSetMotorRightCommand(value);
-    uart_puts("setting RIGHT motor speed: ");
+    vUartPuts("setting RIGHT motor speed: ");
     itoa(value, buffer);
-    uart_puts(buffer);
-    uart_puts("%\r\n");
+    vUartPuts(buffer);
+    vUartPuts("%\r\n");
   }
   else if (cmd == 'b')
   {
@@ -93,23 +89,23 @@ void process_motor_cmd(char* str)
     while (args[sep++] != ':');
     value = atoi_eol(args, ':');
     vSetMotorLeftCommand(value);
-    uart_puts("setting LEFT motor speed: ");
+    vUartPuts("setting LEFT motor speed: ");
     itoa(value, buffer);
-    uart_puts(buffer);
-    uart_puts("%\r\n");
+    vUartPuts(buffer);
+    vUartPuts("%\r\n");
 
     value = atoi(args + sep);
     vSetMotorRightCommand(value);
-    uart_puts("setting RIGHT motor speed: ");
+    vUartPuts("setting RIGHT motor speed: ");
     itoa(value, buffer);
-    uart_puts(buffer);
-    uart_puts("%\r\n");
+    vUartPuts(buffer);
+    vUartPuts("%\r\n");
   }
   else
   {
-    uart_puts("error: undefined subcommand '");
-    uart_putc(cmd);
-    uart_puts("' for motor command\r\n");
+    vUartPuts("error: undefined subcommand '");
+    vUartPutc(cmd);
+    vUartPuts("' for motor command\r\n");
   }
 }
 

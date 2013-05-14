@@ -9,14 +9,13 @@
 
 #define GPIO_TO_EXTI_LINE(GPIO_Pin) (GPIO_Pin)
 
-void hardware_init();
-void gpio_clock_init(GPIO_TypeDef* GPIOx);
-void timer_clock_init(TIM_TypeDef* TIMx);
-void dma_clock_init(DMA_TypeDef* DMAx);
-void adc_clock_init(ADC_TypeDef* ADCx);
-void spi_clock_init(SPI_TypeDef* SPIx);
-void can_clock_init(CAN_TypeDef* CANx);
-uint8_t gpio_pin_to_source(uint16_t GPIO_Pin_x);
-void wait_us(int x);
+void vHardwareInit();
+void vGpioClockInit(GPIO_TypeDef* GPIOx_);
+void vTimerClockInit(TIM_TypeDef* TIMx_);
+void vDmaClockInit(DMA_TypeDef* DMAx_);
+void vAdcClockInit(ADC_TypeDef* ADCx_);
+void vSpiClockInit(SPI_TypeDef* SPIx_);
+void vCanClockInit(CAN_TypeDef* CANx_);
+void vWaitUs(int x_);
 
 #endif

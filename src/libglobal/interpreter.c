@@ -40,38 +40,38 @@ static void prvInterpreterDaemon(void* pvParameters)
   char* cmd;
   int abort, size;
   vTaskDelay(1000);
-  uart_puts("\r\n");
+  vUartPuts("\r\n");
   for (;;)
   {
     abort = 0;
     size = 0;
 
-    uart_puts(prompt);
-    uart_puts(" # ");
+    vUartPuts(prompt);
+    vUartPuts(" # ");
 
     buffer[0] = 0;
-    while ((c = uart_getc()))
+    while ((c = cUartGetc()))
     {
       if (size == 32)
       {
         abort = 1;
-        uart_puts("\r\nerror: command too long...\r\n");
+        vUartPuts("\r\nerror: command too long...\r\n");
         break;
       }
 
       if (c == '\r' || c == '\n')
       {
-        uart_puts("\r\n");
+        vUartPuts("\r\n");
         buffer[size] = 0;
         break;
       }
       else if (c == 0x03)
       {
         abort = 1;
-        uart_puts("\r\n");
+        vUartPuts("\r\n");
         buffer[size] = 0;
-        uart_puts(buffer);
-        uart_puts(": abort\r\n");
+        vUartPuts(buffer);
+        vUartPuts(": abort\r\n");
         break;
       }
       else if (c == 0x08 || c == 0x7f)
@@ -79,9 +79,9 @@ static void prvInterpreterDaemon(void* pvParameters)
         if (size > 0)
         {
           size--;
-          uart_putc(c);
-          uart_putc(' ');
-          uart_putc(c);
+          vUartPutc(c);
+          vUartPutc(' ');
+          vUartPutc(c);
         }
         continue;
       }
@@ -90,7 +90,7 @@ static void prvInterpreterDaemon(void* pvParameters)
                && c != ':'     && c != '.')
         continue;
 
-      uart_putc(c);
+      vUartPutc(c);
       buffer[size++] = c;
     }
 
@@ -110,16 +110,16 @@ static void prvInterpreterDaemon(void* pvParameters)
       {
         (*tokens[i].handler)(cmd + 1);
         abort = 0;
-        uart_puts("\r\n");
+        vUartPuts("\r\n");
         break;
       }
     }
 
     if (abort)
     {
-      uart_puts("error: undefined command '");
-      uart_putc(cmd[0]);
-      uart_puts("\r\n");
+      vUartPuts("error: undefined command '");
+      vUartPutc(cmd[0]);
+      vUartPuts("\r\n");
     }
   }
 }
