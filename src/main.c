@@ -10,26 +10,37 @@
 #include "libperiph/uart.h"
 #include "libperiph/leds.h"
 #include "libperiph/motors.h"
+#include "libperiph/sonar.h"
 
 static bool bMotorsEnable   = ENABLE;
 
 void process_motor_cmd(char* str);
+void process_sonar_cmd(char* str);
 
 int main(void)
 {
   // HARDWARE
   vHardwareInit();
+
   // UART
   vUartInit();
+
   // LEDS
   vLedsInit(tskIDLE_PRIORITY + 1);
+
+  // SONAR
+  vSonarInit();
+
   // MOTORS
   vMotorsInit(tskIDLE_PRIORITY + 3);
+
   // INTERPRETER
-  token_t token;
-  token.command = 'm';
-  token.handler = &process_motor_cmd;
-  vInterpreterInit("woggle", &token, 1, tskIDLE_PRIORITY + 4);
+  token_t tokens[2];
+  tokens[0].command = 'm';
+  tokens[0].handler = &process_motor_cmd;
+  tokens[1].command = 's';
+  tokens[1].handler = &process_sonar_cmd;
+  vInterpreterInit("woggle", &tokens[0], 2, tskIDLE_PRIORITY + 4);
 
   vInterpreterStart();
 
@@ -39,6 +50,13 @@ int main(void)
   vTaskStartScheduler();
 
   return 0;
+}
+
+void process_sonar_cmd(char* str)
+{
+  char buffer[32];
+  itoa(iSonarMeasureDistCm(), buffer);
+  vUartPuts(buffer);
 }
 
 void process_motor_cmd(char* str)

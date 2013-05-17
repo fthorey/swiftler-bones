@@ -34,8 +34,9 @@ void vLedsInit(unsigned portBASE_TYPE ledDaemonPriority_)
     GPIO_ResetBits(leds[i].GPIOx, leds[i].GPIO_Pin_x);
   }
 
+  // Create the Led daemon
   xTaskCreate(prvFlashLEDTask,
-              (signed portCHAR*)"Flash LED",
+              (signed portCHAR*)"ledsd",
               configMINIMAL_STACK_SIZE, NULL,
               ledDaemonPriority_, NULL);
 
