@@ -11,6 +11,7 @@
 #include "libperiph/leds.h"
 #include "libperiph/motors.h"
 #include "libperiph/sonar.h"
+#include "libperiph/sharps.h"
 
 static bool bMotorsEnable   = ENABLE;
 
@@ -26,10 +27,13 @@ int main(void)
   vUartInit();
 
   // LEDS
-  vLedsInit(tskIDLE_PRIORITY + 1);
+  vLedsInit(tskIDLE_PRIORITY + 3);
 
   // SONAR
   vSonarInit();
+
+  // SHARPS
+  /* vSharpsInit(tskIDLE_PRIORITY + 3); */
 
   // MOTORS
   vMotorsInit(tskIDLE_PRIORITY + 3);
