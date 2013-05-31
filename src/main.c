@@ -28,8 +28,9 @@ int main(void)
   vHardwareInit();
   // Uart
   vUartInit();
-
-  // LEDS
+  // I2C
+  vI2CInit();
+  // Leds
   vLedsInit(tskIDLE_PRIORITY + 3);
   // Sonar
   vSonarInit();

@@ -78,6 +78,7 @@ def build(bld):
                                                       'stm32f10x_exti.c',
                                                       'stm32f10x_adc.c',
                                                       'stm32f10x_dma.c',
+                                                      'stm32f10x_i2c.c',
                                                       'misc.c',
                                                       ]),
         target     = 'stm32',
@@ -91,6 +92,7 @@ def build(bld):
     # Build libperiph
     bld(features   = 'c cstlib',
         target     = 'periph',
+        cflags     = ['-include', 'libglobal/assert_param.h'],
         source     = libperiph_dir.ant_glob(['*.c']),
         includes   = [stm32_stddriver_incdir.abspath(),
                       stm32_core_dir.abspath(),

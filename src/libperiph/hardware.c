@@ -136,6 +136,16 @@ void vCanClockInit(CAN_TypeDef* CANx_)
   RCC_APB1PeriphClockCmd(RCC_APB1Periph_CAN1, ENABLE);
 }
 
+void vI2CClockInit(I2C_TypeDef* I2Cx_)
+{
+  RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
+  RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
+  if (I2Cx_ == I2C1)
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C1, ENABLE);
+  else if (I2Cx_ == I2C2)
+    RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C2, ENABLE);
+}
+
 void vWaitUs(int x_)
 {
   int i, j;

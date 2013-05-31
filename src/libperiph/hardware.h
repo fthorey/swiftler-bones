@@ -16,6 +16,7 @@ void vDmaClockInit(DMA_TypeDef* DMAx_);
 void vAdcClockInit(ADC_TypeDef* ADCx_);
 void vSpiClockInit(SPI_TypeDef* SPIx_);
 void vCanClockInit(CAN_TypeDef* CANx_);
+void vI2CClockInit(I2C_TypeDef* I2Cx_);
 void vWaitUs(int x_);
 
 #endif
