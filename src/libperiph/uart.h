@@ -8,4 +8,4 @@ void vUartInit();
 char cUartGetc();
 void vUartGets(char* s_, int size_);
 
-#endif
+#endif /* LIBPERIPH_UART_H */
