@@ -12,40 +12,41 @@
 #include "libperiph/motors.h"
 #include "libperiph/sonar.h"
 #include "libperiph/sharps.h"
+#include "libperiph/i2c.h"
+
+#define CONSOLE_TOKEN_NB 3
 
 static bool bMotorsEnable   = ENABLE;
 
 void process_motor_cmd(char* str);
 void process_sonar_cmd(char* str);
+void process_sharps_cmd(char* str);
 
 int main(void)
 {
-  // HARDWARE
+  // Hardware
   vHardwareInit();
-
-  // UART
+  // Uart
   vUartInit();
 
   // LEDS
   vLedsInit(tskIDLE_PRIORITY + 3);
-
-  // SONAR
+  // Sonar
   vSonarInit();
-
-  // SHARPS
-  /* vSharpsInit(tskIDLE_PRIORITY + 3); */
-
-  // MOTORS
+  // Sharps
+  vSharpsInit();
+  // Motors
   vMotorsInit(tskIDLE_PRIORITY + 3);
 
-  // INTERPRETER
-  token_t tokens[2];
+  // Interpreter
+  token_t tokens[CONSOLE_TOKEN_NB];
   tokens[0].command = 'm';
   tokens[0].handler = &process_motor_cmd;
   tokens[1].command = 's';
   tokens[1].handler = &process_sonar_cmd;
-  vInterpreterInit("woggle", &tokens[0], 2, tskIDLE_PRIORITY + 4);
-
+  tokens[2].command = 'i';
+  tokens[2].handler = &process_sharps_cmd;
+  vInterpreterInit("woggle", &tokens[0], CONSOLE_TOKEN_NB, tskIDLE_PRIORITY + 4);
   vInterpreterStart();
 
   if (bMotorsEnable)
@@ -60,6 +61,17 @@ void process_sonar_cmd(char* str)
 {
   char buffer[32];
   itoa(iSonarMeasureDistCm(), buffer);
+  vUartPuts(buffer);
+}
+
+
+void process_sharps_cmd(char* str)
+{
+  char buffer[32];
+  itoa(uSharpsGetValue(0), buffer);
+  vUartPuts(buffer);
+  vUartPutc('\t');
+  itoa(uSharpsGetValue(1), buffer);
   vUartPuts(buffer);
 }
 

@@ -3,7 +3,7 @@
 
 #include "FreeRTOS.h"
 
-#define SHARPS_MAX_NUMBER 16
+#define SHARPS_NB 2
 
 typedef struct
 {
@@ -14,14 +14,13 @@ typedef struct
 
 typedef struct
 {
-  int nb;
   ADC_TypeDef* ADCx;
-  sharp_t ADCs[SHARPS_MAX_NUMBER];
+  sharp_t ADCs[SHARPS_NB];
   DMA_TypeDef* DMAx;
   DMA_Channel_TypeDef* DMA_Channelx;
 } sharps_t;
 
-void vSharpsInit(unsigned portBASE_TYPE sharpsDaemonPriority_);
+void vSharpsInit();
 uint16_t uSharpsGetValue(int sharp_);
 
 #endif
