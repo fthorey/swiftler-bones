@@ -17,8 +17,8 @@
 static volatile uint16_t ADC_DMA_Buffer[DMA_BUFFER_SIZE] = {0};
 
 static sharps_t sharps = { .ADCx = ADC1,
-                           .ADCs = {{.GPIOx = GPIOC, .GPIO_Pin_x = GPIO_Pin_3, .ADC_Channel_x = ADC_Channel_13},
-                                    {.GPIOx = GPIOC, .GPIO_Pin_x = GPIO_Pin_4, .ADC_Channel_x = ADC_Channel_14}},
+                           .ADCs = {{.GPIOx = GPIOA, .GPIO_Pin_x = GPIO_Pin_6, .ADC_Channel_x = ADC_Channel_6},
+                                    {.GPIOx = GPIOC, .GPIO_Pin_x = GPIO_Pin_3, .ADC_Channel_x = ADC_Channel_13}},
                            .DMAx = DMA1,
                            .DMA_Channelx = DMA1_Channel1 };
 
