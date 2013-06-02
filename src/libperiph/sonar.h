@@ -15,7 +15,7 @@ typedef struct
 {
   GPIO_TypeDef* GPIOx;
   uint16_t GPIO_Pin_x;
-  uint32_t EXTI_Line;
+  TIM_TypeDef* TIMx;
 } sonar_t;
 
 void vSonarInit();

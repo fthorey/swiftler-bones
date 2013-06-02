@@ -23,11 +23,12 @@
 
 // Trigger pulse timer
 // Base clock = 72 Mhz
-// Base clock / Prescaler = 72 / 9 = 8 MHz -> Tc = 0.125 us
-// Period = Trig_pulse / Tc = 10 / 0.125 = 80
-#define TIM_TRIG_PSC        8        // -> div clk by 9
-#define TIM_TRIG_PERIOD     79       // -> count from 0 to 79
-#define TIM_TRIG_TC_US      (0.125)  // -> counter period (us)
+// Base clock / Prescaler = 72 / 1 = 72 MHz -> Tc = 0.014 us
+// Period = 2 * Trig_pulse / Tc = 10 / 0.014 = 1452
+#define TIM_TRIG_PSC        8                     // -> div clk by 9
+#define TIM_TRIG_PERIOD     1452                  // -> count from 0 to 7143
+#define TIM_TRIG_PULSE      (TIM_TRIG_PERIOD / 2) // -> get a pulse of ~ 10us
+#define TIM_TRIG_TC_US      (0.014)               // -> counter period (us)
 
 // Echo pulse timer
 // Base clock = 72 Mhz
@@ -43,213 +44,97 @@
 #define CONV_CONST_US_CM   58
 #define CONV_CONST_US_INCH 148
 
-static xSemaphoreHandle xResponseSemphr;
-
 static sonar_t sonarPin =
 {
-  .GPIOx = GPIOC,
-  .GPIO_Pin_x = GPIO_Pin_2,
-  .EXTI_Line = EXTI_Line2,
+  .GPIOx = GPIOB,
+  .GPIO_Pin_x = GPIO_Pin_5,
+  .TIMx = TIM3
 };
 
-static bool enabled = FALSE;
-static int value;
+static void vSendTriggerPulse()
+{
+  // Disable sonar timer during configuration
+  TIM_Cmd(sonarPin.TIMx, DISABLE);
 
-static void vSetPinInReceiveMode(sonar_t pin_);
-static void vSetPinInSendMode(sonar_t pin_);
+  // Configure sonar pin
+  GPIO_InitTypeDef GPIO_InitStructure =
+    {
+      .GPIO_Pin   = sonarPin.GPIO_Pin_x,
+      .GPIO_Mode  = GPIO_Mode_AF_PP, // alternate function push pull
+      .GPIO_Speed = GPIO_Speed_50MHz // we want to detect fast transitions
+    };
+  GPIO_Init(sonarPin.GPIOx, &GPIO_InitStructure);
+
+  // Reset sonar timer
+  TIM_DeInit(sonarPin.TIMx);
+  // Configure sonar timer
+  TIM_TimeBaseInitTypeDef Timer_InitStructure =
+    {
+      .TIM_ClockDivision      = TIM_CKD_DIV1,       // Keep default clk (72Mhz)
+      .TIM_Prescaler          = TIM_TRIG_PSC,       // Set to trigger prescaler
+      .TIM_Period             = TIM_TRIG_PERIOD,    // Set to trigger period
+      .TIM_CounterMode        = TIM_CounterMode_Up  // Counter goes upward
+    };
+  TIM_TimeBaseInit(sonarPin.TIMx, &Timer_InitStructure);
+
+  // Configure Output channel 2
+  TIM_OCInitTypeDef TIM_OCInitStructure =
+    {
+      .TIM_OCMode           = TIM_OCMode_PWM1,        // PWM1 mode
+      .TIM_OutputState      = TIM_OutputState_Enable, // Output compare state enable
+      .TIM_Pulse            = TIM_TRIG_PULSE,         // pulse duration (capture compare register value)
+      .TIM_OCPolarity       = TIM_OCPolarity_High     // Generate a 0->1 transition when triggering
+    };
+  TIM_OC2Init(sonarPin.TIMx, &TIM_OCInitStructure);
+
+  // Disable output compare register preload
+  TIM_OC2PreloadConfig(sonarPin.TIMx, TIM_OCPreload_Disable);
+  // Disable autoreload register preload
+  TIM_ARRPreloadConfig(sonarPin.TIMx, DISABLE);
+
+  // Send only one pulse on the sonar pin
+  TIM_SelectOnePulseMode(sonarPin.TIMx, TIM_OPMode_Single);
+
+  // Enable capture compare interrupt
+  TIM_ITConfig(sonarPin.TIMx, TIM_IT_CC2, ENABLE);
+
+  // Enable sonar timer
+  TIM_Cmd(sonarPin.TIMx, ENABLE);
+}
 
 void vSonarInit()
 {
-  // Enable Clocks
+  // Enable sonar pin clock
   vGpioClockInit(sonarPin.GPIOx);
-  vTimerClockInit(TIM1);
-  vTimerClockInit(TIM3);
+  // Enable sonar pin TIM
+  vTimerClockInit(sonarPin.TIMx);
 
-  // Link EXTI line to sonar pin
-  GPIO_EXTILineConfig(GPIO_PortSourceGPIOC, GPIO_PinSource2);
-
-  // Configure sonarPin in send mode
-  vSetPinInSendMode(sonarPin);
-
-  // Register EXTI2 interrupt
+  // Register sonar timer interrupt
   NVIC_InitTypeDef NVIC_InitStructure =
     {
-      .NVIC_IRQChannel = EXTI2_IRQn,
+      .NVIC_IRQChannel = TIM3_IRQn,
       .NVIC_IRQChannelPreemptionPriority = 7,
       .NVIC_IRQChannelSubPriority = 0,
       .NVIC_IRQChannelCmd = ENABLE,
     };
   NVIC_Init(&NVIC_InitStructure);
-
-  // Configure trigger pulse TIM
-  // Reset TIM
-  TIM_DeInit(TIM3);
-  // Disable by Software Update Event for now
-  TIM_UpdateDisableConfig(TIM3, ENABLE);
-  TIM_TimeBaseInitTypeDef Timer_InitStructure =
-    {
-      .TIM_ClockDivision      = TIM_CKD_DIV1,
-      .TIM_Prescaler          = TIM_ECHO_PSC,
-      .TIM_Period             = TIM_ECHO_PERIOD,
-      .TIM_CounterMode        = TIM_CounterMode_Up
-    };
-  TIM_TimeBaseInit(TIM3, &Timer_InitStructure);
-  // Enables TIM peripheral Preload register on ARR
-  TIM_ARRPreloadConfig(TIM3, ENABLE);
-  // Enable TIM Update Event Interrupt
-  TIM_ITConfig(TIM3, TIM_IT_Update, ENABLE);
-  // Disable TIM
-  TIM_Cmd(TIM3, DISABLE);
-
-  //  Register trigger pulse TIM interrupt
-  NVIC_InitStructure.NVIC_IRQChannel = TIM3_IRQn;
-  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 7;
-  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
-  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-  NVIC_Init(&NVIC_InitStructure);
-
-  // Configure echo back TIM
-  // Reset TIM
-  TIM_DeInit(TIM1);
-  Timer_InitStructure.TIM_ClockDivision = TIM_CKD_DIV1;
-  Timer_InitStructure.TIM_Prescaler     = TIM_ECHO_PSC;
-  Timer_InitStructure.TIM_Period        = TIM_ECHO_PERIOD;
-  Timer_InitStructure.TIM_CounterMode   = TIM_CounterMode_Up;
-  TIM_TimeBaseInit(TIM1, &Timer_InitStructure);
-  // Enables TIM peripheral Preload register on ARR
-  TIM_ARRPreloadConfig(TIM1, ENABLE);
-  // Disable TIM
-  TIM_Cmd(TIM1, DISABLE);
-
-  // Create interrupt semaphore
-  vSemaphoreCreateBinary(xResponseSemphr);
-}
-
-static void vSetPinInReceiveMode(sonar_t pin_)
-{
-  // Set pin in input
-  GPIO_InitTypeDef GPIO_InitStructure =
-    {
-      .GPIO_Pin   = pin_.GPIO_Pin_x,
-      .GPIO_Mode  = GPIO_Mode_IPD,
-      .GPIO_Speed = GPIO_Speed_2MHz
-    };
-  GPIO_Init(pin_.GPIOx, &GPIO_InitStructure);
-
-  // Enable EXTI line
-  EXTI_InitTypeDef EXTI_InitStructure =
-    {
-      .EXTI_Line = pin_.EXTI_Line,
-      .EXTI_Mode = EXTI_Mode_Interrupt,
-      .EXTI_Trigger = EXTI_Trigger_Rising_Falling,
-      .EXTI_LineCmd = ENABLE
-    };
-  EXTI_Init(&EXTI_InitStructure);
-}
-
-static void vSetPinInSendMode(sonar_t pin_)
-{
-  // Disable EXTI line
-  EXTI_InitTypeDef EXTI_InitStructure =
-    {
-      .EXTI_Line = pin_.EXTI_Line,
-      .EXTI_Mode = EXTI_Mode_Interrupt,
-      .EXTI_Trigger = EXTI_Trigger_Rising_Falling,
-      .EXTI_LineCmd = DISABLE,
-    };
-  EXTI_Init(&EXTI_InitStructure);
-
-  // Set pin in output
-  GPIO_InitTypeDef GPIO_InitStructure =
-    {
-      .GPIO_Pin   = pin_.GPIO_Pin_x,
-      .GPIO_Mode  = GPIO_Mode_Out_PP,
-      .GPIO_Speed = GPIO_Speed_2MHz
-    };
-  GPIO_Init(pin_.GPIOx, &GPIO_InitStructure);
-
-  // Reset Pin
-  GPIO_WriteBit(pin_.GPIOx, pin_.GPIO_Pin_x, Bit_RESET);
 }
 
 void TIM3_IRQHandler()
 {
- portBASE_TYPE reschedNeeded = pdFALSE;
-
- vGpioClockInit(GPIOC);
-
- if (TIM_GetFlagStatus(TIM3, TIM_FLAG_Update))
-   {
-     // 10us has elapsed:
-     // Stop sending trigger pulse
-     GPIO_WriteBit(sonarPin.GPIOx, sonarPin.GPIO_Pin_x, Bit_RESET);
-     // Stop trigger TIM
-     // Disable by software Update Event
-     TIM_UpdateDisableConfig(TIM3, ENABLE);
-     TIM_Cmd(TIM3, DISABLE);
-     // Set sonarPin in receive mode
-     vSetPinInReceiveMode(sonarPin);
-     // Clear Update flag
-     TIM_ClearFlag(TIM3, TIM_FLAG_Update);
-   }
- portEND_SWITCHING_ISR(reschedNeeded);
-}
-
-void EXTI2_IRQHandler()
-{
   portBASE_TYPE reschedNeeded = pdFALSE;
-  if (EXTI_GetFlagStatus(EXTI_Line2))
-  {
-    // Echo end
-    if (enabled)
+
+  if (TIM_GetITStatus(sonarPin.TIMx, TIM_IT_CC2))
     {
-      // Get echo TIM value
-      value = TIM_GetCounter(TIM1);
-      TIM_Cmd(TIM1, DISABLE);
-      xSemaphoreGiveFromISR(xResponseSemphr, &reschedNeeded);
-      enabled = FALSE;
+
+      TIM_ClearITPendingBit(sonarPin.TIMx, TIM_IT_CC2);
     }
-    // Echo start
-    else
-    {
-      // Start echo TIM
-      TIM_Cmd(TIM1, ENABLE);
-      enabled = TRUE;
-    }
-    // Clear interrupt
-    EXTI_ClearFlag(EXTI_Line2);
-  }
+
   portEND_SWITCHING_ISR(reschedNeeded);
 }
 
 int iSonarMeasureDistCm()
 {
-  int time_us;
-  // Reset echo TIM
-  TIM_SetCounter(TIM1, 0);
-  enabled = FALSE;
-  // Reset trigger TIM
-  TIM_SetCounter(TIM3, 0);
-
-  // Set sonarPin in send mode
-  vSetPinInSendMode(sonarPin);
-
-  // Start trigger TIM
-  TIM_Cmd(TIM3, ENABLE);
-  // Enable by software Update Event
-  TIM_UpdateDisableConfig(TIM3, DISABLE);
-  // Start Sending trigger pulse
-  GPIO_WriteBit(sonarPin.GPIOx, sonarPin.GPIO_Pin_x, Bit_SET);
-
-  // Wait for the echo
-  // If the echo takes too much time -> stop waiting
-  if (!xSemaphoreTake(xResponseSemphr,
-                      (SONAR_TIMEOUT_MS + 2) / portTICK_RATE_MS))
-    return SONAR_BAD_VALUE;
-
-  // Calculate interval time
-  // time_us = value * Tc
-  time_us = value * (TIM_ECHO_TC_US);
-
-  return time_us / CONV_CONST_US_CM;
+  vSendTriggerPulse();
+  return 0;
 }
