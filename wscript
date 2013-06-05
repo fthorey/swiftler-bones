@@ -30,7 +30,7 @@ def configure(conf):
     conf.load('compiler_c arm_as')
 
     # Load objcopy
-    conf.find_program(['arm-none-eabi-objcopy', 'arm-linux-gnueabi-objcopy'], var='OBJ_CPY')
+    conf.find_program(['arm-none-eabi-objcopy', 'arm-none-linux-gnueabi-objcopy'], var='OBJ_CPY')
 
     # Flags
     genflags = ['-std=c99', '-Wall', '-Werror', '-fasm', '-fdata-sections', '-ffunction-sections']
@@ -152,7 +152,12 @@ class Upload(BuildContext):
     cmd = 'upload'
     fun = 'upload'
 
+
 def flash(ctx):
+    from waflib import Options
+    Options.commands += ['build', 'upload', 'monitor']
+
+def all(ctx):
     from waflib import Options
     Options.commands += ['distclean', 'configure', 'build', 'upload', 'monitor']
 

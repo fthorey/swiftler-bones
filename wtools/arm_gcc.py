@@ -13,7 +13,7 @@ def find_arm_gcc(conf):
 	"""
 	Find the program gcc, and if present, try to detect its version number
 	"""
-	cc = conf.find_program(['arm-none-eabi-gcc', 'arm-linux-gnueabi-gcc'], var='CC')
+	cc = conf.find_program(['arm-none-eabi-gcc', 'arm-none-linux-gnueabi-gcc'], var='CC')
 	cc = conf.cmd_to_list(cc)
 	conf.get_cc_version(cc, gcc=True)
 	conf.env.CC_NAME = 'arm-gcc'

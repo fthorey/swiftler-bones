@@ -11,7 +11,7 @@ def configure(conf):
 	"""
 	Find the programs arm-linux-gnueabi-/as/gcc and set the variable *AS*
 	"""
-        conf.find_program(['arm-none-eabi-gcc', 'arm-linux-gnueabi-gcc'], var='AS')
+        conf.find_program(['arm-none-eabi-gcc', 'arm-none-linux-gnueabi-gcc'], var='AS')
 	conf.env.AS_TGT_F = ['-c', '-o']
 	conf.env.ASLNK_TGT_F = ['-o']
 	conf.find_arm_ar()

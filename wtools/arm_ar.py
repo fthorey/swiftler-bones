@@ -17,6 +17,6 @@ def find_arm_ar(conf):
 
 def configure(conf):
 	"""Find the ar program and set the default flags in ``conf.env.ARFLAGS``"""
-	conf.find_program(['arm-none-eabi-ar', 'arm-linux-gnueabi-ar'], var='AR')
+	conf.find_program(['arm-none-eabi-ar', 'arm-none-linux-gnueabi-ar'], var='AR')
 	conf.env.ARFLAGS = 'rcs'
 
