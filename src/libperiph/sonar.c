@@ -24,10 +24,10 @@
 
 // Trigger pulse timer
 // Base clock = 72 Mhz
-// Base clock / Prescaler = 72 / 0x10000 = 1kHz -> Tc = 1 ms
+// Base clock / Prescaler = 72 / 1 = 72Mhz -> Tc = 0.014 us
 // Period = 2 * Trig_pulse / Tc = 20 / 0.014 = 1452
-#define TIM_TRIG_PSC        0xFFFF                     // -> div clk by 1
-#define TIM_TRIG_PERIOD     2000                       // -> count from 0 to 1451
+#define TIM_TRIG_PSC        0                          // -> div clk by 1
+#define TIM_TRIG_PERIOD     1451                       // -> count from 0 to 1451
 #define TIM_TRIG_PULSE      (TIM_TRIG_PERIOD / 2)      // -> get a pulse of ~ 10us
 #define TIM_TRIG_TC_US      (0.014)                    // -> counter period (us)
 
@@ -65,6 +65,9 @@ void vSonarInit()
   vGpioClockInit(sonarPin.GPIOx);
   // Enable sonar pin TIM
   vTimerClockInit(sonarPin.TIMx);
+
+  // Remap sonar pin TIM
+  GPIO_PinRemapConfig(GPIO_FullRemap_TIM3, ENABLE);
 
   // Configure sonar pin
   GPIO_InitTypeDef GPIO_InitStructure =
