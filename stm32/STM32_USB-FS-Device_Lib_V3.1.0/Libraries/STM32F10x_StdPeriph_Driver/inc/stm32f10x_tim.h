@@ -458,7 +458,6 @@ typedef struct
 
 #define  TIM_ICPolarity_Rising             ((uint16_t)0x0000)
 #define  TIM_ICPolarity_Falling            ((uint16_t)0x0002)
-#define  TIM_ICPolarity_BothEdge           ((uint16_t)0x000A)
 #define IS_TIM_IC_POLARITY(POLARITY) (((POLARITY) == TIM_ICPolarity_Rising) || \
                                       ((POLARITY) == TIM_ICPolarity_Falling))
 /**
