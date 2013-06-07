@@ -18,8 +18,8 @@ typedef struct
   TIM_TypeDef* TIMx;
 } sonar_t;
 
-void vSonarInit();
+void vSonarInit(unsigned portBASE_TYPE sonarDaemonPriority_);
 int iSonarMeasureDistCm();
-// Should not be called more than 20 times per second.
+// Should not be called more than each 50ms.
 
 #endif

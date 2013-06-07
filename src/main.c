@@ -33,7 +33,7 @@ int main(void)
   // Leds
   vLedsInit(tskIDLE_PRIORITY + 3);
   // Sonar
-  vSonarInit();
+  vSonarInit(tskIDLE_PRIORITY + 3);
   // Sharps
   vSharpsInit();
   // Motors

@@ -16,10 +16,10 @@
 #include "libperiph/uart.h"
 #include "libperiph/hardware.h"
 
-#define SONAR_BAD_VALUE_TRIG (-1)
-#define SONAR_BAD_VALUE_ECHO (-2)
+/// Sonar bad value
+#define SONAR_BAD_VALUE (-1)
 
-// If no obstacle is detected 38ms is returned
+// No obstacle = 38ms returned
 #define SONAR_TIMEOUT_MS 38
 #define DEFAULT_TIMEOUT_MS 1
 
@@ -42,20 +42,20 @@
 #define TIM_ECHO_PERIOD     0xffff    // -> count from 0 to 0xffff
 #define TIM_ECHO_TC_US      (2.5)       // -> counter period
 
-// Constructor defined Conversion from echo time to distance
+// Conversion constant from echo pulse length to distance in cm
 #define CONV_CONST_US_CM   58
-#define CONV_CONST_US_INCH 148
 
 // Register if triggering or receiving pulse
 #define TRIGGER 0
 #define ECHO    1
 static bool mode;
-// Register if begin or end of echo pulse
+// Register if beginning or ending an echo pulse
 #define BEGIN 0
 #define END   1
 static bool capture;
 // Store the echo pulse duration
 static int value;
+static int value_cm;
 // Store the timer values
 static uint16_t IC3Value1;
 static uint16_t IC3Value2;
@@ -68,15 +68,18 @@ static TIM_TimeBaseInitTypeDef Timer_InitStructure;
 static TIM_ICInitTypeDef TIM_ICInitStructure;
 static GPIO_InitTypeDef GPIO_InitStructure;
 
+// Sonar task in charge of measures
+static void vSonarTask(void* pvParameters_);
+
 // Set sonar pin and TIM
 static sonar_t sonarPin =
 {
   .GPIOx = GPIOC,
   .GPIO_Pin_x = GPIO_Pin_8,
-  .TIMx = TIM3
+  .TIMx = TIM3,
 };
 
-void vSonarInit()
+void vSonarInit(unsigned portBASE_TYPE sonarDaemonPriority_)
 {
   // Enable sonar pin clock
   vGpioClockInit(sonarPin.GPIOx);
@@ -96,9 +99,13 @@ void vSonarInit()
     };
   NVIC_Init(&NVIC_InitStructure);
 
+  // Create the daemon
+  xTaskCreate(vSonarTask, (const signed char * const)"sonard",
+              configMINIMAL_STACK_SIZE, NULL, sonarDaemonPriority_, NULL);
+
   // Create semaphore
   vSemaphoreCreateBinary(xResponseSemphr);
-  // And take it
+  // And take it right now
   xSemaphoreTake(xResponseSemphr,
                  (DEFAULT_TIMEOUT_MS) / portTICK_RATE_MS);
 }
@@ -233,24 +240,39 @@ void TIM3_IRQHandler()
 
 int iSonarMeasureDistCm()
 {
-  // Send sonar trigger pulse
-  mode = TRIGGER;
-  vSendTriggerPulse();
-
-  if (!xSemaphoreTake(xResponseSemphr,
-                      (SONAR_TIMEOUT_MS) / portTICK_RATE_MS))
-    return SONAR_BAD_VALUE_TRIG;
-
-  // Reset capture value
-  capture = BEGIN;
-
-  // Set timer in echo mode
-  vSetEchoMode();
-
-  // Wait for the echo pulse end
-  if (!xSemaphoreTake(xResponseSemphr,
-                      (SONAR_TIMEOUT_MS) / portTICK_RATE_MS))
-    return SONAR_BAD_VALUE_ECHO;
-
-  return value * TIM_ECHO_TC_US / CONV_CONST_US_CM;
+  return value_cm;
 }
+
+static void vSonarTask(void* pvParameters_)
+{
+  // Initialize
+  value_cm = SONAR_BAD_VALUE;
+
+  for (;;)
+    {
+      // Send sonar trigger pulse
+      mode = TRIGGER;
+      vSendTriggerPulse();
+
+      if (!xSemaphoreTake(xResponseSemphr,
+                          (SONAR_TIMEOUT_MS) / portTICK_RATE_MS))
+        value_cm = SONAR_BAD_VALUE;
+
+      // Reset capture value
+      capture = BEGIN;
+
+      // Set timer in echo mode
+      vSetEchoMode();
+
+      // Wait for the echo pulse end
+      if (!xSemaphoreTake(xResponseSemphr,
+                          (SONAR_TIMEOUT_MS) / portTICK_RATE_MS))
+        value_cm = SONAR_BAD_VALUE;
+
+      value_cm = value * TIM_ECHO_TC_US / CONV_CONST_US_CM;
+
+      // Wait 100ms between each call
+      vTaskDelay(100 / portTICK_RATE_MS);
+    }
+}
+
