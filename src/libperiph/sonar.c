@@ -57,8 +57,8 @@ static bool capture;
 // Store the echo pulse duration
 static int value;
 // Store the timer values
-static uint16_t IC2Value1;
-static uint16_t IC2Value2;
+static uint16_t IC3Value1;
+static uint16_t IC3Value2;
 
 // Semphr for communication between IRQ and main
 static xSemaphoreHandle xResponseSemphr;
@@ -72,7 +72,7 @@ static GPIO_InitTypeDef GPIO_InitStructure;
 static sonar_t sonarPin =
 {
   .GPIOx = GPIOC,
-  .GPIO_Pin_x = GPIO_Pin_7,
+  .GPIO_Pin_x = GPIO_Pin_8,
   .TIMx = TIM3
 };
 
@@ -83,7 +83,7 @@ void vSonarInit()
   // Enable sonar pin TIM
   vTimerClockInit(sonarPin.TIMx);
 
-  // Remap sonar pin TIM
+  // Remap sonar pin TIM on PC8
   GPIO_PinRemapConfig(GPIO_FullRemap_TIM3, ENABLE);
 
   // Register sonar timer interrupt
@@ -127,7 +127,7 @@ static void vSendTriggerPulse()
   // Clear Update flag
   TIM_ClearFlag(sonarPin.TIMx, TIM_FLAG_Update);
 
-  // Configure output channel 2
+  // Configure output channel 3
   TIM_OCInitTypeDef TIM_OCInitStructure =
     {
       .TIM_OCMode           = TIM_OCMode_PWM2,        // PWM1 mode
@@ -135,10 +135,10 @@ static void vSendTriggerPulse()
       .TIM_Pulse            = TIM_TRIG_PULSE,         // pulse duration (capture compare register value)
       .TIM_OCPolarity       = TIM_OCPolarity_High     // Generate a 0->1 transition when triggering
     };
-  TIM_OC2Init(sonarPin.TIMx, &TIM_OCInitStructure);
+  TIM_OC3Init(sonarPin.TIMx, &TIM_OCInitStructure);
 
   // Disable output compare register preload
-  TIM_OC2PreloadConfig(sonarPin.TIMx, TIM_OCPreload_Disable);
+  TIM_OC3PreloadConfig(sonarPin.TIMx, TIM_OCPreload_Disable);
   // Disable autoreload register preload
   TIM_ARRPreloadConfig(sonarPin.TIMx, DISABLE);
 
@@ -146,7 +146,7 @@ static void vSendTriggerPulse()
   TIM_SelectOnePulseMode(sonarPin.TIMx, TIM_OPMode_Single);
 
   // Enable capture compare and update event interrupt
-  TIM_ITConfig(sonarPin.TIMx, TIM_IT_CC2 | TIM_IT_Update, ENABLE);
+  TIM_ITConfig(sonarPin.TIMx, TIM_IT_CC3 | TIM_IT_Update, ENABLE);
 
   // Enable sonar timer
   TIM_Cmd(sonarPin.TIMx, ENABLE);
@@ -169,8 +169,8 @@ void vSetEchoMode()
   // Clear Update flag
   TIM_ClearFlag(sonarPin.TIMx, TIM_FLAG_Update);
 
-  // Configure Input channel 2
-  TIM_ICInitStructure.TIM_Channel          = TIM_Channel_2;
+  // Configure Input channel 3
+  TIM_ICInitStructure.TIM_Channel          = TIM_Channel_3;
   TIM_ICInitStructure.TIM_ICPolarity       = TIM_ICPolarity_Rising;
   TIM_ICInitStructure.TIM_ICSelection      = TIM_ICSelection_DirectTI;
   TIM_ICInitStructure.TIM_ICPrescaler      = TIM_ICPSC_DIV1;
@@ -200,12 +200,12 @@ void TIM3_IRQHandler()
     TIM_ClearITPendingBit(sonarPin.TIMx, TIM_IT_Update);
   }
 
-  else if (TIM_GetITStatus(sonarPin.TIMx, TIM_IT_CC2)) {
+  else if (TIM_GetITStatus(sonarPin.TIMx, TIM_IT_CC3)) {
     // Echo mode
     if (mode == ECHO) {
       // Start capture
       if (capture == BEGIN) {
-        IC2Value1 = TIM_GetCapture2(sonarPin.TIMx);
+        IC3Value1 = TIM_GetCapture3(sonarPin.TIMx);
         // Toggle timer Input channel polarity
         TIM_ICInitStructure.TIM_ICPolarity = TIM_ICPolarity_Falling;
         TIM_ICInit(sonarPin.TIMx, &TIM_ICInitStructure);
@@ -213,21 +213,20 @@ void TIM3_IRQHandler()
       }
       // End capture
       else if (capture == END) {
-        IC2Value2 = TIM_GetCapture2(sonarPin.TIMx);
+        IC3Value2 = TIM_GetCapture3(sonarPin.TIMx);
 
-        if (IC2Value2 > IC2Value1) {
-          value = (IC2Value2 - IC2Value1) - 1;
+        if (IC3Value2 > IC3Value1) {
+          value = (IC3Value2 - IC3Value1) - 1;
         }
         else {
-          value = ((0xFFFF - IC2Value1) + IC2Value2) - 1;
+          value = ((0xFFFF - IC3Value1) + IC3Value2) - 1;
         }
-
         // Echo pulse end: release semphr
         xSemaphoreGiveFromISR(xResponseSemphr, &reschedNeeded);
       }
     }
     // Clear flag
-    TIM_ClearITPendingBit(sonarPin.TIMx, TIM_IT_CC2);
+    TIM_ClearITPendingBit(sonarPin.TIMx, TIM_IT_CC3);
   }
   portEND_SWITCHING_ISR(reschedNeeded);
 }
