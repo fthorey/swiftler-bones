@@ -16,7 +16,8 @@
 #include "libperiph/uart.h"
 #include "libperiph/hardware.h"
 
-#define SONAR_BAD_VALUE (-1)
+#define SONAR_BAD_VALUE_TRIG (-1)
+#define SONAR_BAD_VALUE_ECHO (-2)
 
 // If no obstacle is detected 38ms is returned
 #define SONAR_TIMEOUT_MS 38
@@ -33,13 +34,13 @@
 
 // Echo pulse timer
 // Base clock = 72 Mhz
-// Base clock / Prescaler = 72 / 45 = 1.6 MHz -> Tc = 0.625 us
+// Base clock / Prescaler = 72 / 180 = 400 kHz -> Tc = 2.5 us
 // Period = 0x10000 -> we can measure time interval
-// up to: Tmax = Tc * 0x10000 ~= 41ms
+// up to: Tmax = Tc * 0x10000 ~= 163.84ms
 // Seems enough as timeout value is 38ms
-#define TIM_ECHO_PSC        44       // -> div clk by 45
-#define TIM_ECHO_PERIOD     0xffff   // -> count from 0 to 0xffff
-#define TIM_ECHO_TC_US      (0.0625) // -> counter period
+#define TIM_ECHO_PSC        179       // -> div clk by 45
+#define TIM_ECHO_PERIOD     0xffff    // -> count from 0 to 0xffff
+#define TIM_ECHO_TC_US      (2.5)       // -> counter period
 
 // Constructor defined Conversion from echo time to distance
 #define CONV_CONST_US_CM   58
@@ -49,9 +50,25 @@
 #define TRIGGER 0
 #define ECHO    1
 static bool mode;
+// Register if begin or end of echo pulse
+#define BEGIN 0
+#define END   1
+static bool capture;
+// Store the echo pulse duration
+static int value;
+// Store the timer values
+static uint16_t IC2Value1;
+static uint16_t IC2Value2;
 
+// Semphr for communication between IRQ and main
 static xSemaphoreHandle xResponseSemphr;
 
+// Private reusable structures
+static TIM_TimeBaseInitTypeDef Timer_InitStructure;
+static TIM_ICInitTypeDef TIM_ICInitStructure;
+static GPIO_InitTypeDef GPIO_InitStructure;
+
+// Set sonar pin and TIM
 static sonar_t sonarPin =
 {
   .GPIOx = GPIOC,
@@ -68,24 +85,6 @@ void vSonarInit()
 
   // Remap sonar pin TIM
   GPIO_PinRemapConfig(GPIO_FullRemap_TIM3, ENABLE);
-
-  // Configure sonar pin
-  GPIO_InitTypeDef GPIO_InitStructure =
-    {
-      .GPIO_Pin   = sonarPin.GPIO_Pin_x,
-      .GPIO_Mode  = GPIO_Mode_AF_PP, // alternate function push pull
-      .GPIO_Speed = GPIO_Speed_50MHz // we want to detect fast transitions
-    };
-  GPIO_Init(sonarPin.GPIOx, &GPIO_InitStructure);
-
-  // Configure test pin
-  GPIO_InitTypeDef GPIO_InitStructure2 =
-    {
-      .GPIO_Pin   = GPIO_Pin_5,
-      .GPIO_Mode  = GPIO_Mode_Out_PP, // alternate function push pull
-      .GPIO_Speed = GPIO_Speed_2MHz // we want to detect fast transitions
-    };
-  GPIO_Init(GPIOC, &GPIO_InitStructure2);
 
   // Register sonar timer interrupt
   NVIC_InitTypeDef NVIC_InitStructure =
@@ -109,18 +108,22 @@ static void vSendTriggerPulse()
   // Disable sonar timer during configuration
   TIM_Cmd(sonarPin.TIMx, DISABLE);
 
+  // Configure sonar pin
+  GPIO_InitStructure.GPIO_Pin   = sonarPin.GPIO_Pin_x;
+  GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_AF_PP;     // alternate function push pull
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;    // we want to detect fast transitions
+  GPIO_Init(sonarPin.GPIOx, &GPIO_InitStructure);
+
   // Reset sonar timer
   TIM_DeInit(sonarPin.TIMx);
 
   // Configure sonar timer
-  TIM_TimeBaseInitTypeDef Timer_InitStructure =
-    {
-      .TIM_ClockDivision      = TIM_CKD_DIV1,       // Keep default clk (72Mhz)
-      .TIM_Prescaler          = TIM_TRIG_PSC,       // Set to trigger prescaler
-      .TIM_Period             = TIM_TRIG_PERIOD,    // Set to trigger period
-      .TIM_CounterMode        = TIM_CounterMode_Up  // Counter goes upward
-    };
+  Timer_InitStructure.TIM_ClockDivision      = TIM_CKD_DIV1;       // Keep default clk (72Mhz)
+  Timer_InitStructure.TIM_Prescaler          = TIM_TRIG_PSC;       // Set to trigger prescaler
+  Timer_InitStructure.TIM_Period             = TIM_TRIG_PERIOD;    // Set to trigger period
+  Timer_InitStructure.TIM_CounterMode        = TIM_CounterMode_Up;  // Counter goes upward
   TIM_TimeBaseInit(sonarPin.TIMx, &Timer_InitStructure);
+
   // Clear Update flag
   TIM_ClearFlag(sonarPin.TIMx, TIM_FLAG_Update);
 
@@ -142,7 +145,7 @@ static void vSendTriggerPulse()
   // Send only one pulse on the sonar pin
   TIM_SelectOnePulseMode(sonarPin.TIMx, TIM_OPMode_Single);
 
-  // Enable capture compare interrupt
+  // Enable capture compare and update event interrupt
   TIM_ITConfig(sonarPin.TIMx, TIM_IT_CC2 | TIM_IT_Update, ENABLE);
 
   // Enable sonar timer
@@ -154,23 +157,25 @@ void vSetEchoMode()
   // Disable sonar timer during configuration
   TIM_Cmd(sonarPin.TIMx, DISABLE);
 
-  // Reset sonar timer
-  TIM_DeInit(sonarPin.TIMx);
+  // Configure sonar pin
+  GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_IN_FLOATING;     // alternate function input floating
+  GPIO_Init(sonarPin.GPIOx, &GPIO_InitStructure);
 
   // Configure sonar timer
-  TIM_TimeBaseInitTypeDef Timer_InitStructure =
-    {
-      .TIM_ClockDivision      = TIM_CKD_DIV1,       // Keep default clk (72Mhz)
-      .TIM_Prescaler          = TIM_ECHO_PSC,       // Set to trigger prescaler
-      .TIM_Period             = TIM_ECHO_PERIOD,    // Set to trigger period
-      .TIM_CounterMode        = TIM_CounterMode_Up  // Counter goes upward
-    };
+  Timer_InitStructure.TIM_Prescaler          = TIM_ECHO_PSC;       // Set to echo prescaler
+  Timer_InitStructure.TIM_Period             = TIM_ECHO_PERIOD;    // Set to echo period
   TIM_TimeBaseInit(sonarPin.TIMx, &Timer_InitStructure);
+
   // Clear Update flag
   TIM_ClearFlag(sonarPin.TIMx, TIM_FLAG_Update);
 
-  // Enable capture compare interrupt
-  TIM_ITConfig(sonarPin.TIMx, TIM_IT_CC2, ENABLE);
+  // Configure Input channel 2
+  TIM_ICInitStructure.TIM_Channel          = TIM_Channel_2;
+  TIM_ICInitStructure.TIM_ICPolarity       = TIM_ICPolarity_Rising;
+  TIM_ICInitStructure.TIM_ICSelection      = TIM_ICSelection_DirectTI;
+  TIM_ICInitStructure.TIM_ICPrescaler      = TIM_ICPSC_DIV1;
+  TIM_ICInitStructure.TIM_ICFilter         = 0x0;
+  TIM_ICInit(sonarPin.TIMx, &TIM_ICInitStructure);
 
   // Enable sonar timer
   TIM_Cmd(sonarPin.TIMx, ENABLE);
@@ -186,10 +191,9 @@ void TIM3_IRQHandler()
   if (TIM_GetITStatus(sonarPin.TIMx, TIM_IT_Update)) {
     // Trigger mode
     if (mode == TRIGGER) {
-      // Switch on test pin
-      GPIO_ResetBits(GPIOC, GPIO_Pin_5);
       // Switch to echo mode
       mode = ECHO;
+      // Trigger pulse end: release semphr
       xSemaphoreGiveFromISR(xResponseSemphr, &reschedNeeded);
     }
     // Clear flag
@@ -197,27 +201,57 @@ void TIM3_IRQHandler()
   }
 
   else if (TIM_GetITStatus(sonarPin.TIMx, TIM_IT_CC2)) {
-    // Switch off test pin
-    GPIO_SetBits(GPIOC, GPIO_Pin_5);
+    // Echo mode
+    if (mode == ECHO) {
+      // Start capture
+      if (capture == BEGIN) {
+        IC2Value1 = TIM_GetCapture2(sonarPin.TIMx);
+        // Toggle timer Input channel polarity
+        TIM_ICInitStructure.TIM_ICPolarity = TIM_ICPolarity_Falling;
+        TIM_ICInit(sonarPin.TIMx, &TIM_ICInitStructure);
+        capture = END;
+      }
+      // End capture
+      else if (capture == END) {
+        IC2Value2 = TIM_GetCapture2(sonarPin.TIMx);
+
+        if (IC2Value2 > IC2Value1) {
+          value = (IC2Value2 - IC2Value1) - 1;
+        }
+        else {
+          value = ((0xFFFF - IC2Value1) + IC2Value2) - 1;
+        }
+
+        // Echo pulse end: release semphr
+        xSemaphoreGiveFromISR(xResponseSemphr, &reschedNeeded);
+      }
+    }
     // Clear flag
     TIM_ClearITPendingBit(sonarPin.TIMx, TIM_IT_CC2);
   }
-
   portEND_SWITCHING_ISR(reschedNeeded);
 }
 
 int iSonarMeasureDistCm()
 {
-  // Switch on test pin
-  GPIO_ResetBits(GPIOC, GPIO_Pin_5);
-
   // Send sonar trigger pulse
   mode = TRIGGER;
   vSendTriggerPulse();
 
   if (!xSemaphoreTake(xResponseSemphr,
                       (SONAR_TIMEOUT_MS) / portTICK_RATE_MS))
-    return -1;
+    return SONAR_BAD_VALUE_TRIG;
 
-  return 0;
+  // Reset capture value
+  capture = BEGIN;
+
+  // Set timer in echo mode
+  vSetEchoMode();
+
+  // Wait for the echo pulse end
+  if (!xSemaphoreTake(xResponseSemphr,
+                      (SONAR_TIMEOUT_MS) / portTICK_RATE_MS))
+    return SONAR_BAD_VALUE_ECHO;
+
+  return value * TIM_ECHO_TC_US / CONV_CONST_US_CM;
 }
