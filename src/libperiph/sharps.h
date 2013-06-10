@@ -5,6 +5,9 @@
 
 #define SHARPS_NB 2
 
+#define SHARP_LEFT  0
+#define SHARP_RIGHT 1
+
 typedef struct
 {
   GPIO_TypeDef* GPIOx;
@@ -21,6 +24,6 @@ typedef struct
 } sharps_t;
 
 void vSharpsInit();
-uint16_t uSharpsGetValue(int sharp_);
+int iSharpsMeasureDistCm(int sharp_);
 
 #endif

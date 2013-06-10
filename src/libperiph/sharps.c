@@ -11,7 +11,11 @@
 #include "libperiph/hardware.h"
 #include "libperiph/sharps.h"
 
-#define AVERAGE_NB 5
+#define MAX_VOLT_MILI     3300
+#define ADC_MAX_VALUE     4096
+#define GET_VOLTAGE_MILI(V)  (V * MAX_VOLT_MILI / ADC_MAX_VALUE)
+
+#define AVERAGE_NB 10
 #define DMA_BUFFER_SIZE (AVERAGE_NB * SHARPS_NB)
 
 static volatile uint16_t ADC_DMA_Buffer[DMA_BUFFER_SIZE] = {0};
@@ -21,6 +25,8 @@ static sharps_t sharps = { .ADCx = ADC1,
                                     {.GPIOx = GPIOC, .GPIO_Pin_x = GPIO_Pin_3, .ADC_Channel_x = ADC_Channel_13}},
                            .DMAx = DMA1,
                            .DMA_Channelx = DMA1_Channel1 };
+
+static int iSharpsGetValue(int sharp_);
 
 void vSharpsInit()
 {
@@ -130,11 +136,15 @@ void vSharpsInit()
   DMA_Cmd(sharps.DMA_Channelx, ENABLE);
 }
 
-uint16_t uSharpsGetValue(int sharp_)
+static int iSharpsGetValue(int sharp_)
 {
   uint16_t smoothedValue = 0;
   for (int i = sharp_; i < DMA_BUFFER_SIZE; i += SHARPS_NB)
     smoothedValue += ADC_DMA_Buffer[i];
-  return smoothedValue / AVERAGE_NB;
+  return GET_VOLTAGE_MILI(smoothedValue / AVERAGE_NB);
 }
 
+int iSharpsMeasureDistCm(int sharp_)
+{
+  return iSharpsGetValue(sharp_);
+}

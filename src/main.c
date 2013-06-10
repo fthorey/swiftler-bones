@@ -69,10 +69,10 @@ void process_sonar_cmd(char* str)
 void process_sharps_cmd(char* str)
 {
   char buffer[32];
-  itoa(uSharpsGetValue(0), buffer);
+  itoa(iSharpsMeasureDistCm(SHARP_LEFT), buffer);
   vUartPuts(buffer);
   vUartPutc('\t');
-  itoa(uSharpsGetValue(1), buffer);
+  itoa(iSharpsMeasureDistCm(SHARP_RIGHT), buffer);
   vUartPuts(buffer);
 }
 
