@@ -14,13 +14,14 @@
 #include "libperiph/sharps.h"
 #include "libperiph/i2c.h"
 
-#define CONSOLE_TOKEN_NB 3
+#define CONSOLE_TOKEN_NB 4
 
 static bool bMotorsEnable   = ENABLE;
 
 void process_motor_cmd(char* str);
 void process_sonar_cmd(char* str);
 void process_sharps_cmd(char* str);
+void process_sensors_cmd(char* str);
 
 int main(void)
 {
@@ -47,6 +48,8 @@ int main(void)
   tokens[1].handler = &process_sonar_cmd;
   tokens[2].command = 'i';
   tokens[2].handler = &process_sharps_cmd;
+  tokens[3].command = 'a';
+  tokens[3].handler = &process_sensors_cmd;
   vInterpreterInit("woggle", &tokens[0], CONSOLE_TOKEN_NB, tskIDLE_PRIORITY + 4);
   vInterpreterStart();
 
@@ -72,6 +75,22 @@ void process_sharps_cmd(char* str)
   fltoa(iSharpsMeasureDistCm(SHARP_LEFT), buffer);
   vUartPuts(buffer);
   vUartPutc('\t');
+  fltoa(iSharpsMeasureDistCm(SHARP_RIGHT), buffer);
+  vUartPuts(buffer);
+}
+
+void process_sensors_cmd(char* str)
+{
+  char buffer[32];
+  // Left sharp
+  fltoa(iSharpsMeasureDistCm(SHARP_LEFT), buffer);
+  vUartPuts(buffer);
+  vUartPutc('\t');
+  // Central sonar
+  itoa(iSonarMeasureDistCm(), buffer);
+  vUartPuts(buffer);
+  vUartPutc('\t');
+  // Right sharp
   fltoa(iSharpsMeasureDistCm(SHARP_RIGHT), buffer);
   vUartPuts(buffer);
 }
