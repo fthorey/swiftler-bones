@@ -13,7 +13,7 @@
 
 #define MAX_VOLT_MILI     3300
 #define ADC_MAX_VALUE     4096
-#define GET_VOLTAGE_MILI(V)  (V * MAX_VOLT_MILI / ADC_MAX_VALUE)
+#define GET_VOLTAGE_MILI(V)  ((float)V * MAX_VOLT_MILI / (ADC_MAX_VALUE * 1000))
 
 #define AVERAGE_NB 10
 #define DMA_BUFFER_SIZE (AVERAGE_NB * SHARPS_NB)
@@ -26,7 +26,19 @@ static sharps_t sharps = { .ADCx = ADC1,
                            .DMAx = DMA1,
                            .DMA_Channelx = DMA1_Channel1 };
 
-static int iSharpsGetValue(int sharp_);
+#define TABLE_SIZE 40
+
+static float table_volt[TABLE_SIZE] = { 0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9,
+                                        1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9,
+                                        2.0, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9,
+                                        3.0, 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9 };
+
+static float table_length[TABLE_SIZE] = { -1, -1, -1, 42.0, 32.5, 27.0, 22.0, 18.5, 16.0, 14.5,
+                                            12.5, 11.5, 10.5, 9.5, 8.4, 8.2, 7.9, 7.2, 6.7, 6.2,
+                                            6.0, 5.8, 5.6, 5.4, 5.1, 4.7, 4.3, 4, 3.9, 3.7,
+                                            3.6, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
+
+static float iSharpsGetValue(int sharp_);
 
 void vSharpsInit()
 {
@@ -136,7 +148,7 @@ void vSharpsInit()
   DMA_Cmd(sharps.DMA_Channelx, ENABLE);
 }
 
-static int iSharpsGetValue(int sharp_)
+static float iSharpsGetValue(int sharp_)
 {
   uint16_t smoothedValue = 0;
   for (int i = sharp_; i < DMA_BUFFER_SIZE; i += SHARPS_NB)
@@ -144,7 +156,16 @@ static int iSharpsGetValue(int sharp_)
   return GET_VOLTAGE_MILI(smoothedValue / AVERAGE_NB);
 }
 
-int iSharpsMeasureDistCm(int sharp_)
+float iSharpsMeasureDistCm(int sharp_)
 {
-  return iSharpsGetValue(sharp_);
+  float value = iSharpsGetValue(sharp_);
+
+  int index = -1;
+  for (int i = 0; i < TABLE_SIZE; i++)
+    if (table_volt[i] > value) {
+      index = i;
+      break;
+    }
+
+  return (table_length[index] + table_length[index-1]) / 2;
 }

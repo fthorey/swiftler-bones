@@ -24,6 +24,6 @@ typedef struct
 } sharps_t;
 
 void vSharpsInit();
-int iSharpsMeasureDistCm(int sharp_);
+float iSharpsMeasureDistCm(int sharp_);
 
 #endif
