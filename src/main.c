@@ -50,7 +50,7 @@ int main(void)
   tokens[2].handler = &process_sharps_cmd;
   tokens[3].command = 'a';
   tokens[3].handler = &process_sensors_cmd;
-  vInterpreterInit("woggle", &tokens[0], CONSOLE_TOKEN_NB, tskIDLE_PRIORITY + 4);
+  vInterpreterInit("swiftler", &tokens[0], CONSOLE_TOKEN_NB, tskIDLE_PRIORITY + 4);
   vInterpreterStart();
 
   if (bMotorsEnable)
@@ -162,4 +162,3 @@ void process_motor_cmd(char* str)
     vUartPuts("' for motor command\r\n");
   }
 }
-

@@ -15,7 +15,7 @@ sys.path += ['wtools']
 top = '.'
 out = 'wbuild'
 
-APPNAME='woggle'
+APPNAME='swiftler'
 
 def options(opt):
     # Set C cross compiler
@@ -170,7 +170,7 @@ def monitor(ctx):
                 with interpreter.console():
                     term = interpreter.Term(serial.Serial(port, 115200, timeout=1), APPNAME)
                     term.ser.write('\r')
-                    interpreter.checkPrompt(term, ['woggle', 'HiZ'])
+                    interpreter.checkPrompt(term, ['swiftler', 'HiZ'])
                 Logs.pprint('YELLOW', "Opened %s" % port)
                 break
             except serial.SerialException as e:
@@ -188,6 +188,3 @@ def monitor(ctx):
             term.ser.flushInput()
             term.ser.write('\r')
             term.run()
-
-
-
